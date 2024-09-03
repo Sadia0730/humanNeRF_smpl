@@ -120,12 +120,21 @@ def apply_global_tfm_to_camera(E, Rh, Th):
     Returns:
         - Array (3, 3)
     """
-
+    print(f"Rh In apply_global_tfm_to_camera: {Rh}")
+    print(f"Th In apply_global_tfm_to_camera: {Th}")
     global_tfms = np.eye(4)  #(4, 4)
     global_rot = cv2.Rodrigues(Rh)[0].T
     global_trans = Th
     global_tfms[:3, :3] = global_rot
     global_tfms[:3, 3] = -global_rot.dot(global_trans)
+    print(f"Shape of E: {E.shape}")
+    print(f"E: {E}")
+    print(f"Shape of global_rot: {global_rot.shape}")
+    print(f"global_rot: {global_rot}")
+    print(f"Shape of global_trans: {global_trans.shape}")
+    print(f"global_trans: {global_trans}")
+    print(f"global_tfms Shape: {global_tfms.shape}")
+    print(f"global_tfms: {global_tfms}")
     return E.dot(np.linalg.inv(global_tfms))
 
 
@@ -143,7 +152,9 @@ def get_rays_from_KRT(H, W, K, R, T):
         - rays_o: Array (H, W, 3)
         - rays_d: Array (H, W, 3)
     """
-
+    print(f"K {K}")
+    print(f"R {R}")
+    print(f"T {T}")
     # calculate the camera origin
     rays_o = -np.dot(R.T, T).ravel()
     # calculate the world coodinates of pixels
@@ -176,12 +187,17 @@ def rays_intersect_3d_bbox(bounds, ray_o, ray_d):
     assert bounds.shape == (2,3)
 
     bounds = bounds + np.array([-0.01, 0.01])[:, None]
+    print(f"bounds: {bounds}")
     nominator = bounds[None] - ray_o[:, None] # (N_rays, 2, 3)
     # calculate the step of intersections at six planes of the 3d bounding box
     ray_d[np.abs(ray_d) < 1e-5] = 1e-5
     d_intersect = (nominator / ray_d[:, None]).reshape(-1, 6) # (N_rays, 6)
+    print(f"d_intersect Shape: {d_intersect.shape}")
+    print(f"d_intersect : {d_intersect}")
     # calculate the six interections
     p_intersect = d_intersect[..., None] * ray_d[:, None] + ray_o[:, None] # (N_rays, 6, 3)
+    print(f"p_intersect Shape: {p_intersect.shape}")
+    print(f"p_intersect: {p_intersect}")
     # calculate the intersections located at the 3d bounding box
     min_x, min_y, min_z, max_x, max_y, max_z = bounds.ravel()
     eps = 1e-6
@@ -200,6 +216,12 @@ def rays_intersect_3d_bbox(bounds, ray_o, ray_d):
     ray_o = ray_o[mask_at_box]
     ray_d = ray_d[mask_at_box]
     norm_ray = np.linalg.norm(ray_d, axis=1)
+    print(f"ray origin: {ray_o}")
+    print(f"ray dir: {ray_d}")
+    print(f"norm_ray: {norm_ray}")
+    print(f"ray origin Shape: {ray_o.shape}")
+    print(f"ray dir Shape: {ray_d.shape}")
+    print(f"norm_ray Shape: {norm_ray.shape}")
     d0 = np.linalg.norm(p_intervals[:, 0] - ray_o, axis=1) / norm_ray
     d1 = np.linalg.norm(p_intervals[:, 1] - ray_o, axis=1) / norm_ray
     near = np.minimum(d0, d1)

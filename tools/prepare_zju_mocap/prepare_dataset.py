@@ -71,7 +71,7 @@ def main(argv):
     smpl_params_dir = os.path.join(subject_dir, "new_params")
 
     select_view = cfg['training_view']
-
+    print(f"select_view: {select_view}")
     anno_path = os.path.join(subject_dir, 'annots.npy')
     annots = np.load(anno_path, allow_pickle=True).item()
     
@@ -95,8 +95,8 @@ def main(argv):
         np.array(multi_view_paths['ims'])[select_view] \
             for multi_view_paths in img_path_frames_views
     ])
-    print(f"img_path_frames_views: {img_path_frames_views}")
-    print(f"img_paths: {img_paths}")
+    # print(f"img_path_frames_views: {img_path_frames_views}")
+    # print(f"img_paths: {img_paths}")
     if max_frames > 0:
         img_paths = img_paths[:max_frames]
 
@@ -158,7 +158,10 @@ def main(argv):
             'joints': joints, 
             'tpose_joints': tpose_joints
         }
-
+        print(f"tpose_joints.shape: {tpose_joints.shape}")
+        print(f"joints.shape: {joints.shape}")
+        print(f"poses.shape: {poses.shape}")
+        print(f"betas.shape: {betas.shape}")
         # load and write mask
         mask = get_mask(subject_dir, ipath)
         save_image(to_3ch_image(mask), 

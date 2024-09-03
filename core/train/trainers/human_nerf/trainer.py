@@ -13,7 +13,8 @@ from core.data import create_dataloader
 from core.utils.network_util import set_requires_grad
 from core.utils.train_util import cpu_data_to_gpu, Timer
 from core.utils.image_util import tile_images, to_8b_image
-
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from configs import cfg
 
 img2mse = lambda x, y : torch.mean((x - y) ** 2)
@@ -23,15 +24,31 @@ to8b = lambda x : (255.*np.clip(x,0.,1.)).astype(np.uint8)
 EXCLUDE_KEYS_TO_GPU = ['frame_name', 'img_width', 'img_height']
 
 
+def visualize_data_with_bbox(img, bbox, title="Image with Bounding Box"):
+    img = img.cpu()
+    fig, ax = plt.subplots()
+    ax.imshow(img)
+    rect = patches.Rectangle((bbox['min_xyz'][0], bbox['min_xyz'][1]),
+                             bbox['max_xyz'][0] - bbox['min_xyz'][0],
+                             bbox['max_xyz'][1] - bbox['min_xyz'][1],
+                             linewidth=2, edgecolor='r', facecolor='none')
+    ax.add_patch(rect)
+    plt.title(title)
+    plt.show()
+    
+
 def _unpack_imgs(rgbs, patch_masks, bgcolor, targets, div_indices):
     N_patch = len(div_indices) - 1
     assert patch_masks.shape[0] == N_patch
     assert targets.shape[0] == N_patch
-
+    print(f"rgbs shape: {rgbs.shape}")
+    print(f"targets shape: {targets.shape}")
+    print(f"div_indices shape: {div_indices.shape}")
+    print(f"div_indices: {div_indices}")
     patch_imgs = bgcolor.expand(targets.shape).clone() # (N_patch, H, W, 3)
     for i in range(N_patch):
         patch_imgs[i, patch_masks[i]] = rgbs[div_indices[i]:div_indices[i+1]]
-
+    print(f"patch_img shape: {patch_imgs.shape}")
     return patch_imgs
 
 
@@ -131,7 +148,7 @@ class Trainer(object):
         for batch_idx, batch in enumerate(train_dataloader):
             if self.iter > cfg.train.maxiter:
                 break
-
+            print(f"frame_name in train: {batch['frame_name']}")
             self.optimizer.zero_grad()
 
             # only access the first batch as we process one image one time
@@ -142,15 +159,55 @@ class Trainer(object):
             data = cpu_data_to_gpu(
                 batch, exclude_keys=EXCLUDE_KEYS_TO_GPU)
             net_output = self.network(**data)
-
+            #print(f"batch_idx: {batch_idx} net_output:{net_output}")
+            # width = batch['img_width']
+            # height = batch['img_height']
+            # ray_mask = batch['ray_mask']
+            # torch.set_printoptions(threshold=torch.numel(ray_mask))
+            # print(f"ray_mask {ray_mask.shape}")
+            # print(f"ray_mask {ray_mask}")
+            # truth = np.full(
+            #             (height * width, 3), np.array(cfg.bgcolor)/255., 
+            #             dtype='float32')
+            # target_rgbs = batch['target_rgbs']
+            # print(f"target_rgbs: {target_rgbs.shape}") #2095,3
+            # print(f"target_rgbs: {target_rgbs}")
+            # truth[ray_mask] = target_rgbs
+            # print(f"Truth data: {truth}")
+            # print(f"Truth: {truth.shape}")
+            # truth = to_8b_image(truth.reshape((height, width, -1)))
+            # print(f"After Truth: {truth.shape}")
+            # Image.fromarray(tiled_image).save(
+            # os.path.join(cfg.logdir, "prog_{:06}.jpg".format(self.iter)))
+            
+            
             train_loss, loss_dict = self.get_loss(
                 net_output=net_output,
                 patch_masks=data['patch_masks'],
                 bgcolor=data['bgcolor'] / 255.,
                 targets=data['target_patches'],
                 div_indices=data['patch_div_indices'])
+            print(f"Computed train_loss: {train_loss.item()}")
+            for name, param in self.network.named_parameters():
+                print(f"{name} requires_grad: {param.requires_grad}")
+
+            for param_group in self.optimizer.param_groups:
+                for param in param_group['params']:
+                    if param.grad is not None:
+                        print(f"Param device: {param.device}, dtype: {param.dtype}")
+                    else:
+                        print("Param has no gradients.")
+
+            print(f"RGB Tensor device: {net_output['rgb'].device}, dtype: {net_output['rgb'].dtype}")
+            print(f"Targets device: {data['target_patches'].device}, dtype: {data['target_patches'].dtype}")
 
             train_loss.backward()
+            for name, param in self.network.named_parameters():
+                if param.grad is None:
+                    print(f"{name} has no gradient after backward")
+                else:
+                    print(f"{name} gradient sum: {param.grad.sum()}")
+           
             self.optimizer.step()
 
             if self.iter % cfg.train.log_interval == 0:
@@ -169,7 +226,7 @@ class Trainer(object):
                 print(log_str)
 
             is_reload_model = False
-            if self.iter in [100, 300, 1000, 2500] or \
+            if self.iter in [1,2,100, 300, 1000, 2500] or \
                 self.iter % cfg.progress.dump_interval == 0:
                 is_reload_model = self.progress()
 
@@ -207,7 +264,6 @@ class Trainer(object):
         images = []
         is_empty_img = False
         for _, batch in enumerate(tqdm(self.prog_dataloader)):
-
             # only access the first batch as we process one image one time
             for k, v in batch.items():
                 batch[k] = v[0]
@@ -231,25 +287,30 @@ class Trainer(object):
 
             rgb = net_output['rgb'].data.to("cpu").numpy()
             target_rgbs = batch['target_rgbs']
-
+            print(f"target_rgbs: {target_rgbs.shape}")
+            print(f"progress_rgb:{rgb.shape}")
+            print(f"ray_mask Shape:{ray_mask.shape}")
             rendered[ray_mask] = rgb
             truth[ray_mask] = target_rgbs
-
+            print(f" count of ray mask : {torch.sum(ray_mask)}")
+            print(f"Rendered: {rendered.shape}")
             truth = to_8b_image(truth.reshape((height, width, -1)))
             rendered = to_8b_image(rendered.reshape((height, width, -1)))
-            images.append(np.concatenate([rendered, truth], axis=1))
+            print(f"After Truth: {truth.shape}")
+            print(f"Rendered: {rendered.shape}")
+            images.append(np.concatenate([truth, rendered], axis=1))
 
-             # check if we create empty images (only at the begining of training)
-            if self.iter <= 5000 and \
-                np.allclose(rendered, np.array(cfg.bgcolor), atol=5.):
-                is_empty_img = True
-                break
+            # check if we create empty images (only at the begining of training)
+            # if self.iter <= 5000 and \
+            #     np.allclose(rendered, np.array(cfg.bgcolor), atol=5.):
+            #     is_empty_img = True
+            #     break
 
         tiled_image = tile_images(images)
-        
+        print("in progress:")
         Image.fromarray(tiled_image).save(
             os.path.join(cfg.logdir, "prog_{:06}.jpg".format(self.iter)))
-
+        print("in progress saved:")
         if is_empty_img:
             print("Produce empty images; reload the init model.")
             self.load_ckpt('init')

@@ -66,9 +66,12 @@ class Dataset(torch.utils.data.Dataset):
         cl_joint_path = os.path.join(self.dataset_path, 'canonical_joints.pkl')
         with open(cl_joint_path, 'rb') as f:
             cl_joint_data = pickle.load(f)
+        print(f"cl_joint__before_data: {cl_joint_data['joints'].shape}")
         canonical_joints = cl_joint_data['joints'].astype('float32')
         canonical_bbox = self.skeleton_to_bbox(canonical_joints)
-
+        print(f"cl_joint_data Shape: {canonical_joints.shape}")
+        print(f"cl_joint_data: {canonical_joints}")
+        print(f"canonical_bbox: {canonical_bbox}")
         return canonical_joints, canonical_bbox
 
     def load_train_cameras(self):
@@ -93,6 +96,7 @@ class Dataset(torch.utils.data.Dataset):
             mesh_infos = pickle.load(f)
 
         for frame_name in mesh_infos.keys():
+            print(f"Ghorar dim: {mesh_infos[frame_name]['joints'].shape}")
             bbox = self.skeleton_to_bbox(mesh_infos[frame_name]['joints'])
             mesh_infos[frame_name]['bbox'] = bbox
 
@@ -312,7 +316,7 @@ class Dataset(torch.utils.data.Dataset):
         img = (img / 255.).astype('float32')
 
         H, W = img.shape[0:2]
-
+        print(f"In Get_item of data : image_shape of {frame_name}:{H}, {W}")
         dst_skel_info = self.query_dst_skeleton(frame_name)
         dst_bbox = dst_skel_info['bbox']
         dst_poses = dst_skel_info['poses']
@@ -334,7 +338,11 @@ class Dataset(torch.utils.data.Dataset):
         ray_img = img.reshape(-1, 3) 
         rays_o = rays_o.reshape(-1, 3) # (H, W, 3) --> (N_rays, 3)
         rays_d = rays_d.reshape(-1, 3)
-
+        print(f"Frame Name: {frame_name}")
+        print(f"ray origin In data train: {rays_o}")
+        print(f"ray dir In data train: {rays_d}")
+        print(f"ray origin Shape In data train: {rays_o.shape}")
+        print(f"ray dir Shape In data train: {rays_d.shape}")
         # (selected N_samples, ), (selected N_samples, ), (N_samples, )
         near, far, ray_mask = rays_intersect_3d_bbox(dst_bbox, rays_o, rays_d)
         rays_o = rays_o[ray_mask]
@@ -343,7 +351,7 @@ class Dataset(torch.utils.data.Dataset):
 
         near = near[:, None].astype('float32')
         far = far[:, None].astype('float32')
-
+        # print(f"ray_shoot_mode {self.ray_shoot_mode}")
         if self.ray_shoot_mode == 'image':
             pass
         elif self.ray_shoot_mode == 'patch':
