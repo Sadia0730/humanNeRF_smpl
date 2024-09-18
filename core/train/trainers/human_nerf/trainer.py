@@ -5,9 +5,10 @@ import torch.nn as nn
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-
+import torch.nn.functional as F
 from third_parties.lpips import LPIPS
-
+from torchvision.models import vgg16
+from core.utils.network_util import set_requires_grad
 from core.train import create_lr_updater
 from core.data import create_dataloader
 from core.utils.network_util import set_requires_grad
@@ -65,6 +66,9 @@ class Trainer(object):
 
         self.optimizer = optimizer
         self.update_lr = create_lr_updater()
+        self.feature_extractor = vgg16(pretrained=True).features[:10].cuda()  
+        set_requires_grad(self.feature_extractor, requires_grad=False)  
+
 
         if cfg.resume and Trainer.ckpt_exists(cfg.load_net):
             self.load_ckpt(f'{cfg.load_net}')
@@ -111,6 +115,37 @@ class Trainer(object):
             losses["lpips"] = torch.mean(lpips_loss)
 
         return losses
+    def calculate_feature_loss(self,net_output,data):
+            # Extract and process patches
+            generated_patches = net_output['rgb']  
+            real_patches = data['target_patches']  
+            print(f"generated_patches {generated_patches.shape}")
+            print(f"real_patches {real_patches.shape}")
+            generated_patches = _unpack_imgs(generated_patches, data['patch_masks'], data['bgcolor'] / 255.,
+                                     real_patches, data['patch_div_indices'])
+            print(f"generated_patches {generated_patches.shape}")
+            print(f"real_patches {real_patches.shape}")
+            # Initialize patch-based feature loss
+            patch_feature_loss = 0
+
+            # Loop over each patch to compute feature-based loss
+            for idx in range(real_patches.shape[0]): 
+                print(f"real_patches idx{real_patches[idx].shape}")
+                print(f"generated_patches {generated_patches[idx].shape}")
+                real_patch = real_patches[idx].permute(2, 0, 1).unsqueeze(0)  # Permute and add batch dimension
+                generated_patch = generated_patches[idx].permute(2, 0, 1).unsqueeze(0)  # Permute and add batch dimension
+
+                # Extract features for each patch
+                with torch.no_grad():
+                    real_features = self.feature_extractor(real_patch)
+                    print(f"Real Feature Shape: {real_features.shape}")
+                    generated_features = self.feature_extractor(generated_patch)
+                    print(f"generated Feature Shape: {generated_features.shape}")
+                # Calculate and accumulate feature-based loss for each patch
+                patch_feature_loss += F.mse_loss(generated_features, real_features)
+            # Average the feature loss across all patches
+            patch_feature_loss /= real_patches.shape[0]
+            return patch_feature_loss
 
     def get_loss(self, net_output, 
                  patch_masks, bgcolor, targets, div_indices):
@@ -159,6 +194,9 @@ class Trainer(object):
             data = cpu_data_to_gpu(
                 batch, exclude_keys=EXCLUDE_KEYS_TO_GPU)
             net_output = self.network(**data)
+
+
+
             #print(f"batch_idx: {batch_idx} net_output:{net_output}")
             # width = batch['img_width']
             # height = batch['img_height']
@@ -180,34 +218,21 @@ class Trainer(object):
             # Image.fromarray(tiled_image).save(
             # os.path.join(cfg.logdir, "prog_{:06}.jpg".format(self.iter)))
             
-            
+            patch_feature_loss = self.calculate_feature_loss(net_output,data)
             train_loss, loss_dict = self.get_loss(
                 net_output=net_output,
                 patch_masks=data['patch_masks'],
                 bgcolor=data['bgcolor'] / 255.,
                 targets=data['target_patches'],
                 div_indices=data['patch_div_indices'])
+            print(f"Computed train_loss Before: {train_loss.item()}")
+            if self.iter in [1500, 3700, 5200, 6700, 12700, 24700, 48700, 96700, 19900, 29900, 39900,49900]:
+                train_loss = train_loss + patch_feature_loss * 0.1
             print(f"Computed train_loss: {train_loss.item()}")
-            for name, param in self.network.named_parameters():
-                print(f"{name} requires_grad: {param.requires_grad}")
-
-            for param_group in self.optimizer.param_groups:
-                for param in param_group['params']:
-                    if param.grad is not None:
-                        print(f"Param device: {param.device}, dtype: {param.dtype}")
-                    else:
-                        print("Param has no gradients.")
-
-            print(f"RGB Tensor device: {net_output['rgb'].device}, dtype: {net_output['rgb'].dtype}")
-            print(f"Targets device: {data['target_patches'].device}, dtype: {data['target_patches'].dtype}")
-
-            train_loss.backward()
-            for name, param in self.network.named_parameters():
-                if param.grad is None:
-                    print(f"{name} has no gradient after backward")
-                else:
-                    print(f"{name} gradient sum: {param.grad.sum()}")
            
+
+           
+            train_loss.backward()
             self.optimizer.step()
 
             if self.iter % cfg.train.log_interval == 0:
@@ -226,7 +251,7 @@ class Trainer(object):
                 print(log_str)
 
             is_reload_model = False
-            if self.iter in [1,2,100, 300, 1000, 2500] or \
+            if self.iter in [100, 300, 1000, 2500] or \
                 self.iter % cfg.progress.dump_interval == 0:
                 is_reload_model = self.progress()
 
