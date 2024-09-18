@@ -6,3 +6,5 @@ experiments/
 experiments_main/
 ot.txt
 dataset/
+*.txt
+.idea/
