@@ -2,7 +2,7 @@ third_parties/
 data/
 terminal*.txt
 *.pyc
-experiments/
+experiments*/
 experiments_main/
 ot.txt
 dataset/
