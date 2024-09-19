@@ -5,7 +5,7 @@ from configs import cfg
 def _query_network():
     module = cfg.network_module
     module_path = module.replace(".", "/") + ".py"
-    network = imp.load_source(module, module_path).Network
+    network = imp.load_source(module, module_path).Network_Triplane
     return network
 
 

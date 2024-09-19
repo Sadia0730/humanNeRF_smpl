@@ -11,7 +11,6 @@ from torchvision.models import vgg16
 from core.utils.network_util import set_requires_grad
 from core.train import create_lr_updater
 from core.data import create_dataloader
-from core.utils.network_util import set_requires_grad
 from core.utils.train_util import cpu_data_to_gpu, Timer
 from core.utils.image_util import tile_images, to_8b_image
 import matplotlib.pyplot as plt
@@ -218,19 +217,13 @@ class Trainer(object):
             # Image.fromarray(tiled_image).save(
             # os.path.join(cfg.logdir, "prog_{:06}.jpg".format(self.iter)))
             
-            patch_feature_loss = self.calculate_feature_loss(net_output,data)
+            # patch_feature_loss = self.calculate_feature_loss(net_output,data)
             train_loss, loss_dict = self.get_loss(
                 net_output=net_output,
                 patch_masks=data['patch_masks'],
                 bgcolor=data['bgcolor'] / 255.,
                 targets=data['target_patches'],
                 div_indices=data['patch_div_indices'])
-            print(f"Computed train_loss Before: {train_loss.item()}")
-            if self.iter in [1500, 3700, 5200, 6700, 12700, 24700, 48700, 96700, 19900, 29900, 39900,49900]:
-                train_loss = train_loss + patch_feature_loss * 0.1
-            print(f"Computed train_loss: {train_loss.item()}")
-           
-
            
             train_loss.backward()
             self.optimizer.step()
@@ -312,17 +305,17 @@ class Trainer(object):
 
             rgb = net_output['rgb'].data.to("cpu").numpy()
             target_rgbs = batch['target_rgbs']
-            print(f"target_rgbs: {target_rgbs.shape}")
-            print(f"progress_rgb:{rgb.shape}")
-            print(f"ray_mask Shape:{ray_mask.shape}")
+            # print(f"target_rgbs: {target_rgbs.shape}")
+            # print(f"progress_rgb:{rgb.shape}")
+            # print(f"ray_mask Shape:{ray_mask.shape}")
             rendered[ray_mask] = rgb
             truth[ray_mask] = target_rgbs
-            print(f" count of ray mask : {torch.sum(ray_mask)}")
-            print(f"Rendered: {rendered.shape}")
+            # print(f" count of ray mask : {torch.sum(ray_mask)}")
+            # print(f"Rendered: {rendered.shape}")
             truth = to_8b_image(truth.reshape((height, width, -1)))
             rendered = to_8b_image(rendered.reshape((height, width, -1)))
-            print(f"After Truth: {truth.shape}")
-            print(f"Rendered: {rendered.shape}")
+            # print(f"After Truth: {truth.shape}")
+            # print(f"Rendered: {rendered.shape}")
             images.append(np.concatenate([truth, rendered], axis=1))
 
             # check if we create empty images (only at the begining of training)

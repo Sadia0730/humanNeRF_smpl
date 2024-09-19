@@ -5,7 +5,8 @@ category: 'human_nerf'
 ## Network Specs
 
 # modules
-network_module: 'core.nets.human_nerf.network'
+#network_module: 'core.nets.human_nerf.network'
+network_module: 'core.nets.human_nerf.network_with_triplane'
 trainer_module: 'core.train.trainers.human_nerf.trainer'
 lr_updater_module: 'core.train.trainers.human_nerf.lr_updaters.exp_decay'
 optimizer_module: 'core.train.optimizers.human_nerf.optimizer'
@@ -52,7 +53,11 @@ pose_decoder:
   mlp_width: 256
   mlp_depth: 4
 
-
+#triplane
+triplane:
+  module: 'core.nets.human_nerf.triplane.triplane'
+  n_features: 32
+  triplane_res: 256
 ##############################################3
 ## Data Configuration
 
