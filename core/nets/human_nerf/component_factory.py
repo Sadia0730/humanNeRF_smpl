@@ -24,3 +24,10 @@ def load_non_rigid_motion_mlp(module_name):
     module = module_name
     module_path = module.replace(".", "/") + ".py"
     return imp.load_source(module, module_path).NonRigidMotionMLP
+# Function to load Density MLP
+def load_density_mlp(module_name):
+    module = module_name
+    module_path = module.replace(".", "/") + ".py"
+    return imp.load_source(module, module_path).DensityMLP
+
+

@@ -8,7 +8,7 @@ from tqdm import tqdm
 import torch.nn.functional as F
 from third_parties.lpips import LPIPS
 from torchvision.models import vgg16
-from core.utils.network_util import set_requires_grad
+from core.utils.network_util import set_requires_grad, check_for_nans
 from core.train import create_lr_updater
 from core.data import create_dataloader
 from core.utils.train_util import cpu_data_to_gpu, Timer
@@ -16,7 +16,7 @@ from core.utils.image_util import tile_images, to_8b_image
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from configs import cfg
-
+from piq import SSIMLoss
 img2mse = lambda x, y : torch.mean((x - y) ** 2)
 img2l1 = lambda x, y : torch.mean(torch.abs(x-y))
 to8b = lambda x : (255.*np.clip(x,0.,1.)).astype(np.uint8)
@@ -38,13 +38,13 @@ def visualize_data_with_bbox(img, bbox, title="Image with Bounding Box"):
     
 
 def _unpack_imgs(rgbs, patch_masks, bgcolor, targets, div_indices):
-    N_patch = len(div_indices) - 1
-    assert patch_masks.shape[0] == N_patch
-    assert targets.shape[0] == N_patch
     print(f"rgbs shape: {rgbs.shape}")
     print(f"targets shape: {targets.shape}")
     print(f"div_indices shape: {div_indices.shape}")
-    print(f"div_indices: {div_indices}")
+    N_patch = len(div_indices) - 1
+    assert patch_masks.shape[0] == N_patch
+    assert targets.shape[0] == N_patch
+    # print(f"div_indices: {div_indices}")
     patch_imgs = bgcolor.expand(targets.shape).clone() # (N_patch, H, W, 3)
     for i in range(N_patch):
         patch_imgs[i, patch_masks[i]] = rgbs[div_indices[i]:div_indices[i+1]]
@@ -97,7 +97,40 @@ class Trainer(object):
         return os.path.exists(Trainer.get_ckpt_path(name))
 
     ######################################################3
-    ## Training 
+    ## Training
+    # def reconstruct_full_image_from_patches(self, patch_rgb_image, patch_masks, patch_info, H, W, patch_size):
+    #     N_patches = patch_rgb_image.shape[0]
+    #     full_image = torch.zeros((H, W, patch_rgb_image.shape[-1]))
+    #
+    #     # Loop through each patch and place it back into the full image
+    #     for i in range(N_patches):
+    #         x_min, y_min = patch_info['xy_min'][i]
+    #         x_max, y_max = patch_info['xy_max'][i]
+    #         full_image[y_min:y_max, x_min:x_max]
+    #         mask = patch_masks[i]  # Use the patch mask to place only valid parts
+    #
+    #         # Place the valid part of the patch back into the full image
+    #         full_image[y_min:y_max, x_min:x_max][mask] = patches[i][mask]
+    #
+    #     return full_image
+
+    def calculate_segmentation_loss(self, patch_rgb, target_alpha, H, W):
+        # Convert patch_rgb to grayscale using the luminance formula
+        patch_grayscale = 0.2989 * patch_rgb[..., 0] + 0.5870 * patch_rgb[..., 1] + 0.1140 * patch_rgb[..., 2]
+        print(f"patch_rgb: {patch_rgb.shape}")
+        print(f"patch_grayscale: {patch_grayscale.shape}")
+        print(f"target_alpha: {target_alpha.shape}")
+        # Reshape the target_alpha if it has 3 channels (convert to single channel)
+        target_alpha = target_alpha.mean(dim=-1) if target_alpha.shape[-1] == 3 else target_alpha
+        print(f"target_alpha: {target_alpha.shape}")
+        # Threshold the grayscale patch to create a binary mask
+        pred_mask = (patch_grayscale > 0.5).float()  # Binary mask from predicted RGB
+
+
+        # Calculate a binary cross-entropy or MSE loss between the predicted and target masks
+        segmentation_loss = F.mse_loss(pred_mask, target_alpha)
+
+        return segmentation_loss
 
     def get_img_rebuild_loss(self, loss_names, rgb, target):
         losses = {}
@@ -112,53 +145,47 @@ class Trainer(object):
             lpips_loss = self.lpips(scale_for_lpips(rgb.permute(0, 3, 1, 2)), 
                                     scale_for_lpips(target.permute(0, 3, 1, 2)))
             losses["lpips"] = torch.mean(lpips_loss)
+            # Add SSIM loss calculation
+            if "ssim" in loss_names:
+                ssim_loss_fn = SSIMLoss(data_range=1.0)  # Assuming normalized data in [0, 1]
+                ssim_loss = ssim_loss_fn(rgb.permute(0, 3, 1, 2), target.permute(0, 3, 1, 2))
+                losses["ssim"] = ssim_loss
 
         return losses
-    def calculate_feature_loss(self,net_output,data):
-            # Extract and process patches
-            generated_patches = net_output['rgb']  
-            real_patches = data['target_patches']  
-            print(f"generated_patches {generated_patches.shape}")
-            print(f"real_patches {real_patches.shape}")
-            generated_patches = _unpack_imgs(generated_patches, data['patch_masks'], data['bgcolor'] / 255.,
-                                     real_patches, data['patch_div_indices'])
-            print(f"generated_patches {generated_patches.shape}")
-            print(f"real_patches {real_patches.shape}")
-            # Initialize patch-based feature loss
-            patch_feature_loss = 0
-
-            # Loop over each patch to compute feature-based loss
-            for idx in range(real_patches.shape[0]): 
-                print(f"real_patches idx{real_patches[idx].shape}")
-                print(f"generated_patches {generated_patches[idx].shape}")
-                real_patch = real_patches[idx].permute(2, 0, 1).unsqueeze(0)  # Permute and add batch dimension
-                generated_patch = generated_patches[idx].permute(2, 0, 1).unsqueeze(0)  # Permute and add batch dimension
-
-                # Extract features for each patch
-                with torch.no_grad():
-                    real_features = self.feature_extractor(real_patch)
-                    print(f"Real Feature Shape: {real_features.shape}")
-                    generated_features = self.feature_extractor(generated_patch)
-                    print(f"generated Feature Shape: {generated_features.shape}")
-                # Calculate and accumulate feature-based loss for each patch
-                patch_feature_loss += F.mse_loss(generated_features, real_features)
-            # Average the feature loss across all patches
-            patch_feature_loss /= real_patches.shape[0]
-            return patch_feature_loss
 
     def get_loss(self, net_output, 
-                 patch_masks, bgcolor, targets, div_indices):
-
+                 patch_masks, bgcolor, targets, div_indices,alpha, alpha_patches, ray_mask):
+        H, W = alpha.shape[:2]
         lossweights = cfg.train.lossweights
         loss_names = list(lossweights.keys())
-
         rgb = net_output['rgb']
+        patch_rgb_image = _unpack_imgs(rgb, patch_masks, bgcolor,
+                                     targets, div_indices)
+        # # Assuming that patch_masks is boolean and matches the shape of div_indices
+        # reconstructed_rgb = self.reconstruct_image_from_patches(
+        #     patch_rgb_image, patch_masks, H, W, 32
+        # )
+
+        print(f"Alpha Shape: {alpha.shape}")
+        print(f"rgb Shape in train: {rgb.shape}")
+        print(f"patch_rgb_image Shape in train: {patch_rgb_image.shape}")
+        print(f"patch_masks Shape: {patch_masks.shape}")
+        print(f"ray_mask Shape: {ray_mask.shape}")
+        print(f"targets Shape: {targets.shape}")
+        print(f"alpha_patches Shape: {alpha_patches.shape}")
+        # print(f"reconstructed_rgb Shape in train: {reconstructed_rgb.shape}")
+
+
         losses = self.get_img_rebuild_loss(
                         loss_names, 
                         _unpack_imgs(rgb, patch_masks, bgcolor,
                                      targets, div_indices), 
                         targets)
 
+
+        silhouette_loss = self.calculate_segmentation_loss(patch_rgb_image, alpha_patches, H, W)
+        losses["silhouette"] = silhouette_loss * cfg.train.lossweights["silhouette"]
+        print(f"silhouette: {silhouette_loss}")
         train_losses = [
             weight * losses[k] for k, weight in lossweights.items()
         ]
@@ -182,51 +209,36 @@ class Trainer(object):
         for batch_idx, batch in enumerate(train_dataloader):
             if self.iter > cfg.train.maxiter:
                 break
-            print(f"frame_name in train: {batch['frame_name']}")
             self.optimizer.zero_grad()
-
+            print(batch)
             # only access the first batch as we process one image one time
             for k, v in batch.items():
                 batch[k] = v[0]
 
             batch['iter_val'] = torch.full((1,), self.iter)
+            ray_mask = batch['ray_mask']
             data = cpu_data_to_gpu(
                 batch, exclude_keys=EXCLUDE_KEYS_TO_GPU)
             net_output = self.network(**data)
 
+            with torch.autograd.detect_anomaly():
+                train_loss, loss_dict = self.get_loss(
+                    net_output=net_output,
+                    patch_masks=data['patch_masks'],
+                    bgcolor=data['bgcolor'] / 255.,
+                    targets=data['target_patches'],
+                    div_indices=data['patch_div_indices'],
+                    alpha=data['alpha'],
+                    alpha_patches=data['alpha_patches'],
+                    ray_mask=ray_mask
+                    )
+
+                if torch.isnan(train_loss):
+                    print("NaN detected in train_loss, proceeding with debug")
 
 
-            #print(f"batch_idx: {batch_idx} net_output:{net_output}")
-            # width = batch['img_width']
-            # height = batch['img_height']
-            # ray_mask = batch['ray_mask']
-            # torch.set_printoptions(threshold=torch.numel(ray_mask))
-            # print(f"ray_mask {ray_mask.shape}")
-            # print(f"ray_mask {ray_mask}")
-            # truth = np.full(
-            #             (height * width, 3), np.array(cfg.bgcolor)/255., 
-            #             dtype='float32')
-            # target_rgbs = batch['target_rgbs']
-            # print(f"target_rgbs: {target_rgbs.shape}") #2095,3
-            # print(f"target_rgbs: {target_rgbs}")
-            # truth[ray_mask] = target_rgbs
-            # print(f"Truth data: {truth}")
-            # print(f"Truth: {truth.shape}")
-            # truth = to_8b_image(truth.reshape((height, width, -1)))
-            # print(f"After Truth: {truth.shape}")
-            # Image.fromarray(tiled_image).save(
-            # os.path.join(cfg.logdir, "prog_{:06}.jpg".format(self.iter)))
-            
-            # patch_feature_loss = self.calculate_feature_loss(net_output,data)
-            train_loss, loss_dict = self.get_loss(
-                net_output=net_output,
-                patch_masks=data['patch_masks'],
-                bgcolor=data['bgcolor'] / 255.,
-                targets=data['target_patches'],
-                div_indices=data['patch_div_indices'])
-           
-            train_loss.backward()
-            self.optimizer.step()
+                train_loss.backward()
+                self.optimizer.step()
 
             if self.iter % cfg.train.log_interval == 0:
                 loss_str = f"Loss: {train_loss.item():.4f} ["
@@ -305,8 +317,8 @@ class Trainer(object):
 
             rgb = net_output['rgb'].data.to("cpu").numpy()
             target_rgbs = batch['target_rgbs']
-            # print(f"target_rgbs: {target_rgbs.shape}")
-            # print(f"progress_rgb:{rgb.shape}")
+            print(f"target_rgbs: {target_rgbs.shape}")
+            print(f"progress_rgb:{rgb.shape}")
             # print(f"ray_mask Shape:{ray_mask.shape}")
             rendered[ray_mask] = rgb
             truth[ray_mask] = target_rgbs

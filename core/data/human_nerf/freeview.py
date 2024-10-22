@@ -102,7 +102,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def load_train_mesh_infos(self):
         mesh_infos = None
-        with open(os.path.join(self.dataset_path, 'mesh_infos.pkl'), 'rb') as f:   
+        with open(os.path.join(self.dataset_path, 'mesh_infos_with_betas.pkl'), 'rb') as f:
             mesh_infos = pickle.load(f)
 
         for frame_name in mesh_infos.keys():
@@ -123,7 +123,8 @@ class Dataset(torch.utils.data.Dataset):
                 self.train_mesh_info['tpose_joints'].astype('float32'),
             'bbox': self.train_mesh_info['bbox'].copy(),
             'Rh': self.train_mesh_info['Rh'].astype('float32'),
-            'Th': self.train_mesh_info['Th'].astype('float32')
+            'Th': self.train_mesh_info['Th'].astype('float32'),
+            'betas': self.train_mesh_info['betas'].astype('float32')
         }
 
     def get_freeview_camera(self, frame_idx, total_frames, trans=None):
@@ -187,7 +188,7 @@ class Dataset(torch.utils.data.Dataset):
         dst_tpose_joints = dst_skel_info['dst_tpose_joints']
         dst_Rh = dst_skel_info['Rh']
         dst_Th = dst_skel_info['Th']
-
+        betas = dst_skel_info['betas']
         K, E = self.get_freeview_camera(
                         frame_idx=idx,
                         total_frames=self.total_frames,
@@ -233,7 +234,8 @@ class Dataset(torch.utils.data.Dataset):
             results.update({
                 'dst_Rs': dst_Rs,
                 'dst_Ts': dst_Ts,
-                'cnl_gtfms': cnl_gtfms
+                'cnl_gtfms': cnl_gtfms,
+                'betas': betas
             })                                    
 
         if 'motion_weights_priors' in self.keyfilter:

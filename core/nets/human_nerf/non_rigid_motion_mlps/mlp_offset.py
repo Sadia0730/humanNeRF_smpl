@@ -16,16 +16,16 @@ class NonRigidMotionMLP(nn.Module):
         self.skips = [4] if skips is None else skips
         
         block_mlps = [nn.Linear(pos_embed_size+condition_code_size, 
-                                mlp_width), nn.ReLU()]
+                                mlp_width), nn.LeakyReLU(negative_slope=0.01)]
         
         layers_to_cat_inputs = []
         for i in range(1, mlp_depth):
             if i in self.skips:
                 layers_to_cat_inputs.append(len(block_mlps))
-                block_mlps += [nn.Linear(mlp_width+pos_embed_size, mlp_width), 
-                               nn.ReLU()]
+                block_mlps += [nn.Linear(mlp_width+pos_embed_size, mlp_width),
+                               nn.LeakyReLU(negative_slope=0.01)]
             else:
-                block_mlps += [nn.Linear(mlp_width, mlp_width), nn.ReLU()]
+                block_mlps += [nn.Linear(mlp_width, mlp_width), nn.LeakyReLU(negative_slope=0.01)]
 
         block_mlps += [nn.Linear(mlp_width, 3)]
 

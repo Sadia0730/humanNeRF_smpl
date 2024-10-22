@@ -15,6 +15,8 @@ class MotionWeightVolumeDecoder(nn.Module):
         self.const_embedding = nn.Parameter(
             torch.randn(embedding_size), requires_grad=True 
         )
+        # Initialize const_embedding with a normal distribution
+        torch.nn.init.normal_(self.const_embedding, mean=0, std=0.01)
 
         self.decoder = ConvDecoder3D(
             embedding_size=embedding_size,

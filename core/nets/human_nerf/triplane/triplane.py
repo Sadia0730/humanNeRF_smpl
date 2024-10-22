@@ -30,6 +30,9 @@ class TriPlane(nn.Module):
         x = x * 2 - 1
         shape = x.shape
         coords = x.reshape(1, -1, 1, 3)
+        # Ensure that 'coords' is a tensor
+        if isinstance(coords, np.ndarray):
+            coords = torch.tensor(coords, device=self.plane_xy.device).float()
         # align_corners=True ==> the extrema (-1 and 1) considered as the center of the corner pixels
         # F.grid_sample: [1, C, H, W], [1, N, 1, 2] -> [1, C, N, 1]
         feat_xy = F.grid_sample(self.plane_xy, coords[..., [0, 1]], align_corners=True)[0, :, :, 0].transpose(0, 1)

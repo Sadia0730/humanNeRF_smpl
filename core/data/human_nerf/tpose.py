@@ -88,6 +88,7 @@ class Dataset(torch.utils.data.Dataset):
         with open(cl_joint_path, 'rb') as f:
             cl_joint_data = pickle.load(f)
         canonical_joints = cl_joint_data['joints'].astype('float32')
+        betas = cl_joint_data['avg_betas'].astype('float32')
         canonical_bbox = self.skeleton_to_bbox(canonical_joints)
 
         return canonical_joints, canonical_bbox
@@ -139,7 +140,7 @@ class Dataset(torch.utils.data.Dataset):
         dst_bbox = self.canonical_bbox.copy()
         dst_poses = np.zeros(72, dtype='float32')
         dst_skel_joints = self.canonical_joints.copy()
-
+        betas = dst_skel_info['betas']
         # rotate body
         angle = 2 * np.pi / self.total_frames * idx
         add_rmtx = cv2.Rodrigues(np.array([0, -angle, 0], dtype='float32'))[0]
@@ -187,7 +188,8 @@ class Dataset(torch.utils.data.Dataset):
             results.update({
                 'dst_Rs': dst_Rs,
                 'dst_Ts': dst_Ts,
-                'cnl_gtfms': cnl_gtfms
+                'cnl_gtfms': cnl_gtfms,
+                'betas': betas
             })                                    
 
         if 'motion_weights_priors' in self.keyfilter:

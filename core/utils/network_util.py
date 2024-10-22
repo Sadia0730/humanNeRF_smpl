@@ -303,3 +303,8 @@ def set_requires_grad(nets, requires_grad=False):
         if net is not None:
             for param in net.parameters():
                 param.requires_grad = requires_grad
+def check_for_nans(name, tensor):
+    if torch.isnan(tensor).any() or torch.isinf(tensor).any():
+        print(f"NaN or Inf detected in {name}")
+        return True
+    return False

@@ -3,12 +3,13 @@ import os
 import torch
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 
 from core.data import create_dataloader
 from core.nets import create_network
 from core.utils.train_util import cpu_data_to_gpu
 from core.utils.image_util import ImageWriter, to_8b_image, to_8b3ch_image
-
+from core.utils.metric import calculate_metrics
 from configs import cfg, args
 
 EXCLUDE_KEYS_TO_GPU = ['frame_name',
@@ -59,8 +60,9 @@ def _freeview(
     writer = ImageWriter(
                 output_dir=os.path.join(cfg.logdir, cfg.load_net),
                 exp_name=folder_name)
-
+    metrics_data = []
     model.eval()
+    idx = 0  # Initialize the index counter
     for batch in tqdm(test_loader):
         for k, v in batch.items():
             batch[k] = v[0]
@@ -68,7 +70,7 @@ def _freeview(
         data = cpu_data_to_gpu(
                     batch,
                     exclude_keys=EXCLUDE_KEYS_TO_GPU)
-
+        print(data)
         with torch.no_grad():
             net_output = model(**data, 
                                iter_val=cfg.eval_iter)
@@ -85,6 +87,11 @@ def _freeview(
             width, height, ray_mask, np.array(cfg.bgcolor) / 255.,
             rgb.data.cpu().numpy(),
             alpha.data.cpu().numpy())
+        if target_rgbs is not None:
+            # Calculate metrics
+            metrics = calculate_metrics(to_8b_image(target_rgbs.numpy()), rgb_img)
+            metrics['Image Index'] = idx
+            metrics_data.append(metrics)
 
         imgs = [rgb_img]
         if cfg.show_truth and target_rgbs is not None:
@@ -95,6 +102,12 @@ def _freeview(
 
         img_out = np.concatenate(imgs, axis=1)
         writer.append(img_out)
+        # Create DataFrame and write to Excel
+        df = pd.DataFrame(metrics_data)
+        excel_path = os.path.join(cfg.logdir, 'image_quality_metrics.xlsx')
+        df.to_excel(excel_path, index=False)
+        print(f"Excel file saved at: {excel_path}")
+        idx += 1
 
     writer.finalize()
 
@@ -122,7 +135,7 @@ def run_movement(render_folder_name='movement'):
     writer = ImageWriter(
         output_dir=os.path.join(cfg.logdir, cfg.load_net),
         exp_name=render_folder_name)
-
+    metrics_data = []
     model.eval()
     for idx, batch in enumerate(tqdm(test_loader)):
         for k, v in batch.items():
@@ -148,7 +161,11 @@ def run_movement(render_folder_name='movement'):
                 rgb.data.cpu().numpy(),
                 alpha.data.cpu().numpy(),
                 batch['target_rgbs'])
-
+        if batch['target_rgbs'] is not None:
+            # Calculate metrics
+            metrics = calculate_metrics(truth_img, rgb_img)
+            metrics['Image Index'] = idx
+            metrics_data.append(metrics)
         imgs = [rgb_img]
         if cfg.show_truth:
             imgs.append(truth_img)
@@ -157,6 +174,12 @@ def run_movement(render_folder_name='movement'):
             
         img_out = np.concatenate(imgs, axis=1)
         writer.append(img_out, img_name=f"{idx:06d}")
+        # Create DataFrame and write to Excel
+        df = pd.DataFrame(metrics_data)
+        excel_path = os.path.join(cfg.logdir, 'image_quality_metrics.xlsx')
+        df.to_excel(excel_path, index=False)
+        print(f"Excel file saved at: {excel_path}")
+
     
     writer.finalize()
 

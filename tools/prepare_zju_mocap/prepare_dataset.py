@@ -155,6 +155,7 @@ def main(argv):
             'Rh': Rh,
             'Th': Th,
             'poses': poses,
+            'betas': betas,
             'joints': joints, 
             'tpose_joints': tpose_joints
         }
@@ -176,7 +177,7 @@ def main(argv):
         pickle.dump(cameras, f)
         
     # write mesh infos
-    with open(os.path.join(output_path, 'mesh_infos.pkl'), 'wb') as f:   
+    with open(os.path.join(output_path, 'mesh_infos_with_betas.pkl'), 'wb') as f:
         pickle.dump(mesh_infos, f)
 
     # write canonical joints
@@ -187,6 +188,7 @@ def main(argv):
         pickle.dump(
             {
                 'joints': template_joints,
+                'avg_betas': avg_betas,
             }, f)
 
 if __name__ == '__main__':

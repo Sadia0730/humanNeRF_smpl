@@ -12,10 +12,10 @@ class BodyPoseRefiner(nn.Module):
                  **_):
         super(BodyPoseRefiner, self).__init__()
         
-        block_mlps = [nn.Linear(embedding_size, mlp_width), nn.ReLU()]
+        block_mlps = [nn.Linear(embedding_size, mlp_width), nn.LeakyReLU(negative_slope=0.01)]
         
         for _ in range(0, mlp_depth-1):
-            block_mlps += [nn.Linear(mlp_width, mlp_width), nn.ReLU()]
+            block_mlps += [nn.Linear(mlp_width, mlp_width), nn.LeakyReLU(negative_slope=0.01)]
 
         self.total_bones = cfg.total_bones - 1
         block_mlps += [nn.Linear(mlp_width, 3 * self.total_bones)]
