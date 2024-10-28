@@ -232,11 +232,11 @@ def body_pose_to_body_RTs(jangles, tpose_joints):
     """
 
     jangles = jangles.reshape(-1, 3)
-    print(F"jangles after reshape: {jangles.shape}")
+    # print(F"jangles after reshape: {jangles.shape}")
     total_joints = jangles.shape[0]
-    print(F"total_joints: {total_joints}")
-
-    print(F"tpose_joints: {tpose_joints.shape}")
+    # print(F"total_joints: {total_joints}")
+    #
+    # print(F"tpose_joints: {tpose_joints.shape}")
     assert tpose_joints.shape[0] == total_joints
 
     Rs = np.zeros(shape=[total_joints, 3, 3], dtype='float32')
@@ -248,8 +248,8 @@ def body_pose_to_body_RTs(jangles, tpose_joints):
     for i in range(1, total_joints):
         Rs[i] = _rvec_to_rmtx(jangles[i,:])
         Ts[i] = tpose_joints[i,:] - tpose_joints[SMPL_PARENT[i], :]
-    print(Rs.shape)
-    print(Ts.shape)
+    # print(Rs.shape)
+    # print(Ts.shape)
     return Rs, Ts
 
 

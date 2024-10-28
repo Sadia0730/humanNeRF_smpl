@@ -30,7 +30,13 @@ def parse_config():
     config = None
     with open(FLAGS.cfg, 'r') as file:
         config = yaml.full_load(file)
-
+        # Resolve dynamic placeholders for subject and training_view
+    config['output']['dir'] = config['output']['dir'].format(
+        subject=config['dataset']['subject']
+    )
+    config['output']['name'] = config['output']['name'].format(
+        training_view=config['training_view']
+    )
     return config
 
 

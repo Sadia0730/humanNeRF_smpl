@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from configs import cfg
 from piq import SSIMLoss
+from core.utils.metric import calculate_metrics
+
 img2mse = lambda x, y : torch.mean((x - y) ** 2)
 img2l1 = lambda x, y : torch.mean(torch.abs(x-y))
 to8b = lambda x : (255.*np.clip(x,0.,1.)).astype(np.uint8)
@@ -147,8 +149,12 @@ class Trainer(object):
             losses["lpips"] = torch.mean(lpips_loss)
             # Add SSIM loss calculation
             if "ssim" in loss_names:
+                print(f"RGB Min: {rgb.min()}, Max: {rgb.max()}")
+                print(f"Target Min: {target.min()}, Max: {target.max()}")
+                print(rgb.shape)
+                print(target.shape)
                 ssim_loss_fn = SSIMLoss(data_range=1.0)  # Assuming normalized data in [0, 1]
-                ssim_loss = ssim_loss_fn(rgb.permute(0, 3, 1, 2), target.permute(0, 3, 1, 2))
+                ssim_loss = ssim_loss_fn(torch.clamp(rgb,0,1).permute(0, 3, 1, 2), torch.clamp(target,0,1).permute(0, 3, 1, 2))
                 losses["ssim"] = ssim_loss
 
         return losses
@@ -210,7 +216,6 @@ class Trainer(object):
             if self.iter > cfg.train.maxiter:
                 break
             self.optimizer.zero_grad()
-            print(batch)
             # only access the first batch as we process one image one time
             for k, v in batch.items():
                 batch[k] = v[0]
@@ -232,15 +237,22 @@ class Trainer(object):
                     alpha_patches=data['alpha_patches'],
                     ray_mask=ray_mask
                     )
+                for loss_name, loss_val in loss_dict.items():
+                    if check_for_nans(f"{loss_name} loss", loss_val):
+                        print(f"NaN detected in {loss_name} loss")
 
                 if torch.isnan(train_loss):
                     print("NaN detected in train_loss, proceeding with debug")
 
 
                 train_loss.backward()
+                for name, param in self.network.named_parameters():
+                    if param.grad is not None and check_for_nans(f"{name} grad", param.grad):
+                        print(f"NaN detected in gradient of {name}")
+                torch.nn.utils.clip_grad_norm_(self.network.parameters(), max_norm=1.0)
                 self.optimizer.step()
 
-            if self.iter % cfg.train.log_interval == 0:
+            if self.iter > 55000 and self.iter % cfg.train.log_interval == 0:
                 loss_str = f"Loss: {train_loss.item():.4f} ["
                 for k, v in loss_dict.items():
                     loss_str += f"{k}: {v.item():.4f} "
@@ -288,12 +300,12 @@ class Trainer(object):
 
     def progress(self):
         self.progress_begin()
-
+        metrics_data = []
         print('Evaluate Progress Images ...')
 
         images = []
         is_empty_img = False
-        for _, batch in enumerate(tqdm(self.prog_dataloader)):
+        for idx, batch in enumerate(tqdm(self.prog_dataloader)):
             # only access the first batch as we process one image one time
             for k, v in batch.items():
                 batch[k] = v[0]
@@ -317,6 +329,9 @@ class Trainer(object):
 
             rgb = net_output['rgb'].data.to("cpu").numpy()
             target_rgbs = batch['target_rgbs']
+
+
+
             print(f"target_rgbs: {target_rgbs.shape}")
             print(f"progress_rgb:{rgb.shape}")
             # print(f"ray_mask Shape:{ray_mask.shape}")
@@ -331,10 +346,10 @@ class Trainer(object):
             images.append(np.concatenate([truth, rendered], axis=1))
 
             # check if we create empty images (only at the begining of training)
-            # if self.iter <= 5000 and \
-            #     np.allclose(rendered, np.array(cfg.bgcolor), atol=5.):
-            #     is_empty_img = True
-            #     break
+            if self.iter <= 5000 and \
+                np.allclose(rendered, np.array(cfg.bgcolor), atol=5.):
+                is_empty_img = True
+                break
 
         tiled_image = tile_images(images)
         print("in progress:")
@@ -346,7 +361,6 @@ class Trainer(object):
             self.load_ckpt('init')
             
         self.progress_end()
-
         return is_empty_img
 
 

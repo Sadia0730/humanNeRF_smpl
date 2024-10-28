@@ -219,9 +219,9 @@ def rays_intersect_3d_bbox(bounds, ray_o, ray_d):
     # print(f"ray origin: {ray_o}")
     # print(f"ray dir: {ray_d}")
     # print(f"norm_ray: {norm_ray}")
-    print(f"ray origin Shape: {ray_o.shape}")
-    print(f"ray dir Shape: {ray_d.shape}")
-    print(f"norm_ray Shape: {norm_ray.shape}")
+    # print(f"ray origin Shape: {ray_o.shape}")
+    # print(f"ray dir Shape: {ray_d.shape}")
+    # print(f"norm_ray Shape: {norm_ray.shape}")
     d0 = np.linalg.norm(p_intervals[:, 0] - ray_o, axis=1) / norm_ray
     d1 = np.linalg.norm(p_intervals[:, 1] - ray_o, axis=1) / norm_ray
     near = np.minimum(d0, d1)

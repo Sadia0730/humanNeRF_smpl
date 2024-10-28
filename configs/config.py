@@ -10,7 +10,7 @@ from third_parties.yacs import CfgNode as CN
 _C = CN()
 
 # "resume" should be train options but we lift it up for cmd line convenience
-_C.resume = False
+_C.resume = True
 
 # current iteration -- set a very large value for evaluation
 _C.eval_iter = 10000000
@@ -30,7 +30,7 @@ def get_cfg_defaults():
 
 
 def parse_cfg(cfg):
-    cfg.logdir = os.path.join('experiments_100k_iter', cfg.category, cfg.task, cfg.subject, cfg.experiment)
+    cfg.logdir = os.path.join('experiments', cfg.category, cfg.task, cfg.subject, cfg.experiment)
 
 
 def determine_primary_secondary_gpus(cfg):

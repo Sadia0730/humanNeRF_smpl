@@ -79,7 +79,7 @@ train:
   batch_size: 1
   shuffle: False
   drop_last: False
-  maxiter: 100000
+  maxiter: 200000
   lr: 0.0005  # 5e-4
   lr_mweight_vol_decoder: 0.00005 # 5e-5
   lr_pose_decoder: 0.00005        # 5e-5
@@ -92,9 +92,9 @@ train:
   ray_shoot_mode: 'patch'
   lossweights:
     lpips: 1.0
-    mse: 0.2
+    mse: 0.1
     silhouette: 1.0
-    ssim: 0.5
+    ssim: 0.8
 
 progress:
   batch_size: 1
@@ -138,7 +138,7 @@ N_samples: 128      # number of samples for each ray in coarse ray matching
 
 perturb: 1.        # only for training, set to 0. for no jitter, 1. for jitter
 
-netchunk_per_gpu: 30000 # number of pts sent through network in parallel, decrease if running out of memory
+netchunk_per_gpu: 35000 # number of pts sent through network in parallel, decrease if running out of memory
 chunk: 32768   # 32768=1024*32, number of rays processed in parallel, decrease if running out of memory
 n_gpus: 2
 

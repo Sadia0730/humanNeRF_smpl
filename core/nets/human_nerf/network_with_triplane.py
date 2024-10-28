@@ -34,7 +34,7 @@ class Network_Triplane(nn.Module):
         self.triplane = TriPlane(n_features, resX=triplane_res, resY=triplane_res, resZ=triplane_res).to('cuda')
         # Calculate triplane feature size
         tri_feats_size = 3 * n_features  # Since tri_feats is concatenated from 3 planes: xy, xz, yz
-        self.blending_weight = nn.Parameter(torch.tensor(0.5, dtype=torch.float32), requires_grad=True)
+        self.blending_weight = nn.Parameter(torch.randn(1, dtype=torch.float32), requires_grad=True)
         # motion basis computer
         self.motion_basis_computer = MotionBasisComputer(
                                         total_bones=cfg.total_bones)
@@ -176,7 +176,7 @@ class Network_Triplane(nn.Module):
         # Reshape back to [N_rays, N_samples, 1]
         return interpolated_densities.reshape(N_rays, N_samples)
 
-    def blend_densities(self, nerf_density, triplane_density, weight=0.5):
+    def blend_densities(self, nerf_density, triplane_density):
         common_device = nerf_density.device
         triplane_density = triplane_density.to(common_device)
         if check_for_nans("nerf_density", nerf_density):
@@ -184,11 +184,17 @@ class Network_Triplane(nn.Module):
         if check_for_nans("triplane_density", triplane_density):
             print("NaN detected in triplane_density")
 
-        print(f"In Blend Density Function {type(weight)} {weight}")
-        print(f"In Blend Density Function {type(nerf_density)} {nerf_density.shape} {nerf_density.device}")
-        print(f"In Blend Density Function {type(triplane_density)} {triplane_density.shape} {triplane_density.device}")
         blend_weight = torch.sigmoid(self.blending_weight)
-        return (blend_weight * nerf_density) + ((1 - blend_weight) * triplane_density)
+
+        print(f"In Blend Density Function blend_weight: {type(blend_weight)} {blend_weight}")
+        blend_weight = blend_weight.clone().detach()
+        if check_for_nans("blend_weight", blend_weight ):
+            print("NaN detected in blend_weight")
+        blend_density = (blend_weight * nerf_density) + ((1 - blend_weight) * triplane_density)
+        print(f"In Blend Density Function final_blend_weight: {type(blend_weight )} {blend_weight }")
+        if check_for_nans("blend_density", blend_density):
+            print("NaN detected in blend_density")
+        return blend_density
 
     def _query_mlp(
             self,
@@ -274,9 +280,7 @@ class Network_Triplane(nn.Module):
         all_ret = {}
         for i in range(0, rays_flat.shape[0], cfg.chunk):
             ret = self._render_rays(rays_flat[i:i+cfg.chunk], **kwargs)
-            print(f"ret: {ret}")
             for k in ret:
-                print(k)
                 if k not in all_ret:
                     all_ret[k] = []
                 all_ret[k].append(ret[k])
@@ -453,6 +457,7 @@ class Network_Triplane(nn.Module):
         if check_for_nans("blended_density", blended_density):
             print("NaN detected in blended_density")
         # Replace NeRF density with blended density in the raw output
+        # rawcopy=raw.clone
         raw[..., 3] = blended_density
         print(f"blended_density")
         rgb_map, acc_map, _, depth_map = \

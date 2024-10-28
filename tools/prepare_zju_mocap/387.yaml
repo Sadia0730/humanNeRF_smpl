@@ -3,9 +3,9 @@ dataset:
   subject: '387'
   sex: 'neutral'
 
-training_view: 1
+training_view: 23
 max_frames: 540
 
 output:
-  dir: ../../dataset/zju_mocap/zju-test/
-  name: '387'
+  dir: ../../dataset/zju_mocap/{subject}/zju-test/
+  name: 'cam_{training_view}'

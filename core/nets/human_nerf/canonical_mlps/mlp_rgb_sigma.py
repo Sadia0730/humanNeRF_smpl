@@ -43,7 +43,7 @@ class CanonicalMLP(nn.Module):
         for i, _ in enumerate(self.pts_linears):
             if i in self.layers_to_cat_input:
                 h = torch.cat([pos_embed, h], dim=-1)
-                print(h.shape)
+                # print(h.shape)
             h = self.pts_linears[i](h)
 
         outputs = self.output_linear(h)

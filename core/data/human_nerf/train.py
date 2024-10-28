@@ -66,10 +66,10 @@ class Dataset(torch.utils.data.Dataset):
         cl_joint_path = os.path.join(self.dataset_path, 'canonical_joints.pkl')
         with open(cl_joint_path, 'rb') as f:
             cl_joint_data = pickle.load(f)
-        print(f"cl_joint__before_data: {cl_joint_data['joints'].shape}")
+        # print(f"cl_joint__before_data: {cl_joint_data['joints'].shape}")
         canonical_joints = cl_joint_data['joints'].astype('float32')
         canonical_bbox = self.skeleton_to_bbox(canonical_joints)
-        print(f"cl_joint_data Shape: {canonical_joints.shape}")
+        # print(f"cl_joint_data Shape: {canonical_joints.shape}")
         # print(f"cl_joint_data: {canonical_joints}")
         # print(f"canonical_bbox: {canonical_bbox}")
         return canonical_joints, canonical_bbox
@@ -339,7 +339,7 @@ class Dataset(torch.utils.data.Dataset):
                 Th=dst_skel_info['Th'])
         R = E[:3, :3]
         T = E[:3, 3]
-        print(f"K in data: {K}")
+        # print(f"K in data: {K}")
         rays_o, rays_d = get_rays_from_KRT(H, W, K, R, T)
         ray_img = img.reshape(-1, 3) 
         rays_o = rays_o.reshape(-1, 3) # (H, W, 3) --> (N_rays, 3)
@@ -354,8 +354,8 @@ class Dataset(torch.utils.data.Dataset):
         rays_o = rays_o[ray_mask]
         rays_d = rays_d[ray_mask]
         ray_img = ray_img[ray_mask]
-        print(f"ray_img.shape: {ray_img.shape}")
-        print(f"ray_mask.shape: {ray_mask.shape}")
+        # print(f"ray_img.shape: {ray_img.shape}")
+        # print(f"ray_mask.shape: {ray_mask.shape}")
         near = near[:, None].astype('float32')
         far = far[:, None].astype('float32')
         # print(f"ray_shoot_mode {self.ray_shoot_mode}")
@@ -434,5 +434,5 @@ class Dataset(torch.utils.data.Dataset):
             results.update({
                 'dst_posevec': dst_posevec_69,
             })
-        print(f"Batch contents: {results}")
+        # print(f"Batch contents: {results}")
         return results
