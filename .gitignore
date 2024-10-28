@@ -8,3 +8,7 @@ ot.txt
 dataset/
 *.txt
 .idea/
+Python-3.10.12.tgz
+Python-3.10.12/
+humannerf/
+torch-2.1.1+cu118-cp310-cp310-linux_x86_64.whl
