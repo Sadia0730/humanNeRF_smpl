@@ -14,7 +14,7 @@ class DatasetArgs(object):
                     "ray_shoot_mode": cfg.train.ray_shoot_mode,
                 },
                 f"zju_{sub}_test": {
-                    "dataset_path": f"dataset/zju_mocap/{sub}/zju-test/cam_1",
+                    "dataset_path": f"dataset/zju_mocap/{sub}/zju-test/cam_4",
                     "keyfilter": cfg.test_keyfilter,
                     "ray_shoot_mode": 'image',
                     "src_type": 'zju_mocap'

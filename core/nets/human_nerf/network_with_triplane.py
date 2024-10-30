@@ -145,9 +145,13 @@ class Network_Triplane(nn.Module):
         N_rays, N_samples, _ = sampled_points.shape
         self.print_parameter_devices(self.density_mlp)
         print(f"Primary GPU: {cfg.primary_gpus}, Secondary GPUs: {cfg.secondary_gpus}")
+        # Normalize sampled_points to match the range of smpl_vertices (assuming range [0,1])
+        sampled_points_min = sampled_points.min(dim=1, keepdim=True)[0]
+        sampled_points_max = sampled_points.max(dim=1, keepdim=True)[0]
+        sampled_points_norm = (sampled_points - sampled_points_min) / (sampled_points_max - sampled_points_min)
 
         # Find the nearest vertex for each sampled point
-        sampled_points_flat = sampled_points.reshape(-1, 3)  # [N_rays * N_samples, 3]
+        sampled_points_flat = sampled_points_norm.reshape(-1, 3)  # [N_rays * N_samples, 3]
         chunk = cfg.netchunk_per_gpu * len(cfg.secondary_gpus)
         nearest_vertex_idx = self.compute_nearest_vertex_idx(sampled_points_flat, smpl_vertices,chunk)
         if check_for_nans("nearest_vertex_idx", nearest_vertex_idx):
@@ -163,7 +167,7 @@ class Network_Triplane(nn.Module):
         # nearest_tri_feats = nearest_tri_feats.to(next(self.density_mlp.parameters()).device)
         print(f"Nearest TriPlane features are on device before: {nearest_tri_feats.device}")
         # Predict density using the density MLP
-        scaler = torch.cuda.amp.GradScaler()
+
         self.density_mlp.to(cfg.secondary_gpus[0])
         nearest_tri_feats = nearest_tri_feats.to(cfg.secondary_gpus[0])
         print(f"Density MLP is on device: {next(self.density_mlp.parameters()).device}")

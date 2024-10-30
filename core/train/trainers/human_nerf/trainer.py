@@ -26,18 +26,6 @@ to8b = lambda x : (255.*np.clip(x,0.,1.)).astype(np.uint8)
 EXCLUDE_KEYS_TO_GPU = ['frame_name', 'img_width', 'img_height']
 
 
-def visualize_data_with_bbox(img, bbox, title="Image with Bounding Box"):
-    img = img.cpu()
-    fig, ax = plt.subplots()
-    ax.imshow(img)
-    rect = patches.Rectangle((bbox['min_xyz'][0], bbox['min_xyz'][1]),
-                             bbox['max_xyz'][0] - bbox['min_xyz'][0],
-                             bbox['max_xyz'][1] - bbox['min_xyz'][1],
-                             linewidth=2, edgecolor='r', facecolor='none')
-    ax.add_patch(rect)
-    plt.title(title)
-    plt.show()
-    
 
 def _unpack_imgs(rgbs, patch_masks, bgcolor, targets, div_indices):
     print(f"rgbs shape: {rgbs.shape}")
@@ -100,21 +88,6 @@ class Trainer(object):
 
     ######################################################3
     ## Training
-    # def reconstruct_full_image_from_patches(self, patch_rgb_image, patch_masks, patch_info, H, W, patch_size):
-    #     N_patches = patch_rgb_image.shape[0]
-    #     full_image = torch.zeros((H, W, patch_rgb_image.shape[-1]))
-    #
-    #     # Loop through each patch and place it back into the full image
-    #     for i in range(N_patches):
-    #         x_min, y_min = patch_info['xy_min'][i]
-    #         x_max, y_max = patch_info['xy_max'][i]
-    #         full_image[y_min:y_max, x_min:x_max]
-    #         mask = patch_masks[i]  # Use the patch mask to place only valid parts
-    #
-    #         # Place the valid part of the patch back into the full image
-    #         full_image[y_min:y_max, x_min:x_max][mask] = patches[i][mask]
-    #
-    #     return full_image
 
     def calculate_segmentation_loss(self, patch_rgb, target_alpha, H, W):
         # Convert patch_rgb to grayscale using the luminance formula
@@ -167,10 +140,6 @@ class Trainer(object):
         rgb = net_output['rgb']
         patch_rgb_image = _unpack_imgs(rgb, patch_masks, bgcolor,
                                      targets, div_indices)
-        # # Assuming that patch_masks is boolean and matches the shape of div_indices
-        # reconstructed_rgb = self.reconstruct_image_from_patches(
-        #     patch_rgb_image, patch_masks, H, W, 32
-        # )
 
         print(f"Alpha Shape: {alpha.shape}")
         print(f"rgb Shape in train: {rgb.shape}")
@@ -250,6 +219,9 @@ class Trainer(object):
                     if param.grad is not None and check_for_nans(f"{name} grad", param.grad):
                         print(f"NaN detected in gradient of {name}")
                 torch.nn.utils.clip_grad_norm_(self.network.parameters(), max_norm=1.0)
+                # Additional gradient clipping only for density_mlp
+                torch.nn.utils.clip_grad_norm_(self.network.density_mlp.parameters(), max_norm=1.0)
+
                 self.optimizer.step()
 
             if self.iter > 55000 and self.iter % cfg.train.log_interval == 0:
