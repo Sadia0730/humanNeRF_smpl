@@ -357,4 +357,12 @@ class Trainer(object):
         self.iter = ckpt['iter'] + 1
 
         self.network.load_state_dict(ckpt['network'], strict=False)
+        self.network = self.network.cuda()  # or self.network.to('cuda:0') for consistency
+        for submodule in self.network.children():
+            submodule = submodule.cuda()
         self.optimizer.load_state_dict(ckpt['optimizer'])
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.cuda()  # Ensure all optimizer tensors are moved to the GPU
+

@@ -1,4 +1,4 @@
-def extract_nan_sections(log_file_path, context_lines=5):
+def extract_nan_sections(log_file_path, context_lines=100):
     nan_sections = []
 
     with open(log_file_path, 'r') as file:
@@ -6,7 +6,7 @@ def extract_nan_sections(log_file_path, context_lines=5):
 
     # Iterate through lines to find "NaN" mentions
     for i, line in enumerate(lines):
-        if 'NaN' in line:
+        if '[Iter 236400,' in line:
             # Capture surrounding lines for context
             start = max(i - context_lines, 0)
             end = min(i + context_lines + 1, len(lines))
@@ -21,5 +21,5 @@ def extract_nan_sections(log_file_path, context_lines=5):
 
 
 # Usage
-log_file_path = 'experiments/human_nerf/zju_mocap/p387/adventure/logs.txt'
+log_file_path = 'experiments_with_nan/human_nerf/zju_mocap/p387/adventure/logs.txt'
 extract_nan_sections(log_file_path)

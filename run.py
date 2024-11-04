@@ -133,8 +133,8 @@ def run_movement(render_folder_name='movement'):
     model = load_network()
     test_loader = create_dataloader('movement')
     writer = ImageWriter(
-        output_dir=os.path.join(cfg.logdir, cfg.load_net),
-        exp_name=render_folder_name)
+        output_dir=os.path.join(cfg.logdir, cfg.load_net, render_folder_name),
+        exp_name=f'cam_{cfg.cam_id}')
     metrics_data = []
     model.eval()
     for idx, batch in enumerate(tqdm(test_loader)):
@@ -176,7 +176,7 @@ def run_movement(render_folder_name='movement'):
         writer.append(img_out, img_name=f"{idx:06d}")
         # Create DataFrame and write to Excel
         df = pd.DataFrame(metrics_data)
-        excel_path = os.path.join(cfg.logdir, 'image_quality_metrics.xlsx')
+        excel_path = os.path.join(cfg.logdir, cfg.load_net, render_folder_name, f'cam_{cfg.cam_id}', f'cam_{args.cam_id}_metrics.xlsx')
         df.to_excel(excel_path, index=False)
         print(f"Excel file saved at: {excel_path}")
 

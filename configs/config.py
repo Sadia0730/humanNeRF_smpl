@@ -30,7 +30,7 @@ def get_cfg_defaults():
 
 
 def parse_cfg(cfg):
-    cfg.logdir = os.path.join('experiments_with_nan', cfg.category, cfg.task, cfg.subject, cfg.experiment)
+    cfg.logdir = os.path.join('experiments_with_nan_backup', cfg.category, cfg.task, cfg.subject, cfg.experiment)
 
 
 def determine_primary_secondary_gpus(cfg):
@@ -54,6 +54,10 @@ def make_cfg(args):
     cfg = get_cfg_defaults()
     cfg.merge_from_file('configs/default.yaml')
     cfg.merge_from_file(args.cfg)
+        # Handle camera ID before merging other opts
+    if hasattr(args, 'cam_id'):
+        cfg.cam_id = args.cam_id
+    # cfg.merge_from_list(args.cam_id)
     cfg.merge_from_list(args.opts)
     parse_cfg(cfg)
 
@@ -65,6 +69,7 @@ def make_cfg(args):
 parser = argparse.ArgumentParser()
 parser.add_argument("--cfg", required=True, type=str)
 parser.add_argument("--type", default="skip", type=str)
+parser.add_argument("--cam_id", type=str, default="1", help="Specify camera ID")
 parser.add_argument("opts", default=None, nargs=argparse.REMAINDER)
 args = parser.parse_args()
 
