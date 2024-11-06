@@ -92,7 +92,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def load_train_mesh_infos(self):
         mesh_infos = None
-        with open(os.path.join(self.dataset_path, 'mesh_infos.pkl'), 'rb') as f:   
+        with open(os.path.join(self.dataset_path, 'mesh_infos_with_betas.pkl'), 'rb') as f:   
             mesh_infos = pickle.load(f)
 
         for frame_name in mesh_infos.keys():

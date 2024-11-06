@@ -54,6 +54,10 @@ def make_cfg(args):
     cfg = get_cfg_defaults()
     cfg.merge_from_file('configs/default.yaml')
     cfg.merge_from_file(args.cfg)
+        # Handle camera ID before merging other opts
+    if hasattr(args, 'cam_id'):
+        cfg.cam_id = args.cam_id
+    # cfg.merge_from_list(args.cam_id)
     cfg.merge_from_list(args.opts)
     parse_cfg(cfg)
 
@@ -63,9 +67,10 @@ def make_cfg(args):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--cfg", required=True, type=str)
-parser.add_argument("--type", default="skip", type=str)
-parser.add_argument("opts", default=None, nargs=argparse.REMAINDER)
+parser.add_argument("--type", required=True, type=str, help="Type of operation to perform")
+parser.add_argument("--cfg", required=True, type=str, help="Path to config file")
+parser.add_argument("--cam_id", type=str, default="1", help="Specify camera ID")
+parser.add_argument("opts", nargs=argparse.REMAINDER, help="Additional options")
 args = parser.parse_args()
 
 cfg = make_cfg(args)
