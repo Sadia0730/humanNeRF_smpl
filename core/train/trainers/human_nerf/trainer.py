@@ -121,14 +121,14 @@ class Trainer(object):
                                     scale_for_lpips(target.permute(0, 3, 1, 2)))
             losses["lpips"] = torch.mean(lpips_loss)
             # Add SSIM loss calculation
-            if "ssim" in loss_names:
-                print(f"RGB Min: {rgb.min()}, Max: {rgb.max()}")
-                print(f"Target Min: {target.min()}, Max: {target.max()}")
-                print(rgb.shape)
-                print(target.shape)
-                ssim_loss_fn = SSIMLoss(data_range=1.0)  # Assuming normalized data in [0, 1]
-                ssim_loss = ssim_loss_fn(torch.clamp(rgb,0,1).permute(0, 3, 1, 2), torch.clamp(target,0,1).permute(0, 3, 1, 2))
-                losses["ssim"] = ssim_loss
+        if "ssim" in loss_names:
+            print(f"RGB Min: {rgb.min()}, Max: {rgb.max()}")
+            print(f"Target Min: {target.min()}, Max: {target.max()}")
+            print(rgb.shape)
+            print(target.shape)
+            ssim_loss_fn = SSIMLoss(data_range=1.0)  # Assuming normalized data in [0, 1]
+            ssim_loss = ssim_loss_fn(torch.clamp(rgb,0,1).permute(0, 3, 1, 2), torch.clamp(target,0,1).permute(0, 3, 1, 2))
+            losses["ssim"] = ssim_loss
 
         return losses
 

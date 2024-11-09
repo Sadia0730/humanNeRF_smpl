@@ -49,8 +49,8 @@ non_rigid_motion_mlp:
   skips: [4]
   multires: 6       # log2 of max freq for positional encoding (3D location)
   i_embed: 0        # set 0 for default positional encoding, -1 for none
-  kick_in_iter: 10000
-  full_band_iter: 50000
+  kick_in_iter: 50000
+  full_band_iter: 70000
 
 # pose decoder
 pose_decoder:
