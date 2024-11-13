@@ -53,8 +53,9 @@ class Trainer(object):
         network = network.cuda().deploy_mlps_to_secondary_gpus()
         self.network = network
 
-        self.optimizer = optimizer
-        self.update_lr = create_lr_updater()
+        # self.optimizer = optimizer
+        self.optimizer, self.scheduler = optimizer 
+        # self.update_lr = create_lr_updater()
         self.feature_extractor = vgg16(pretrained=True).features[:10].cuda()  
         set_requires_grad(self.feature_extractor, requires_grad=False)  
 
@@ -120,15 +121,15 @@ class Trainer(object):
             lpips_loss = self.lpips(scale_for_lpips(rgb.permute(0, 3, 1, 2)), 
                                     scale_for_lpips(target.permute(0, 3, 1, 2)))
             losses["lpips"] = torch.mean(lpips_loss)
-            # Add SSIM loss calculation
-            if "ssim" in loss_names:
-                print(f"RGB Min: {rgb.min()}, Max: {rgb.max()}")
-                print(f"Target Min: {target.min()}, Max: {target.max()}")
-                print(rgb.shape)
-                print(target.shape)
-                ssim_loss_fn = SSIMLoss(data_range=1.0)  # Assuming normalized data in [0, 1]
-                ssim_loss = ssim_loss_fn(torch.clamp(rgb,0,1).permute(0, 3, 1, 2), torch.clamp(target,0,1).permute(0, 3, 1, 2))
-                losses["ssim"] = ssim_loss
+        # Add SSIM loss calculation
+        if "ssim" in loss_names:
+            print(f"RGB Min: {rgb.min()}, Max: {rgb.max()}")
+            print(f"Target Min: {target.min()}, Max: {target.max()}")
+            print(rgb.shape)
+            print(target.shape)
+            ssim_loss_fn = SSIMLoss(data_range=1.0)  # Assuming normalized data in [0, 1]
+            ssim_loss = ssim_loss_fn(torch.clamp(rgb,0,1).permute(0, 3, 1, 2), torch.clamp(target,0,1).permute(0, 3, 1, 2))
+            losses["ssim"] = 1 - ssim_loss
 
         return losses
 
@@ -181,11 +182,13 @@ class Trainer(object):
         self.train_begin(train_dataloader=train_dataloader)
 
         self.timer.begin()
+        epoch_loss = 0
         for batch_idx, batch in enumerate(train_dataloader):
             if self.iter > cfg.train.maxiter:
                 break
             self.optimizer.zero_grad()
             # only access the first batch as we process one image one time
+            print(batch.items())
             for k, v in batch.items():
                 batch[k] = v[0]
 
@@ -223,8 +226,8 @@ class Trainer(object):
                 torch.nn.utils.clip_grad_norm_(self.network.density_mlp.parameters(), max_norm=1.0)
 
                 self.optimizer.step()
-
-            if self.iter > 55000 and self.iter % cfg.train.log_interval == 0:
+                epoch_loss += train_loss.item()
+            if self.iter % cfg.train.log_interval == 0:
                 loss_str = f"Loss: {train_loss.item():.4f} ["
                 for k, v in loss_dict.items():
                     loss_str += f"{k}: {v.item():.4f} "
@@ -252,9 +255,13 @@ class Trainer(object):
                     if self.iter % cfg.train.save_model_interval == 0:
                         self.save_ckpt(f'iter_{self.iter}')
 
-                self.update_lr(self.optimizer, self.iter)
-
+                # self.update_lr(self.optimizer, self.iter)
+                print(f"Iter: {self.iter}r")
                 self.iter += 1
+                
+        epoch_loss = float(epoch_loss / len(train_dataloader))  # Convert to scalar Python float
+        # Call scheduler once per epoch
+        self.scheduler.step(epoch_loss)
     
     def finalize(self):
         self.save_ckpt('latest')

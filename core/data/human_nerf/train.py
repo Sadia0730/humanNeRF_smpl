@@ -300,9 +300,13 @@ class Dataset(torch.utils.data.Dataset):
         target_patches = np.stack(targets, axis=0) # (N_patches, P, P, 3)
         alpha_patches = np.stack(alpha_patches, axis=0)  # (N_patches, P, P)
         patch_masks = patch_info['mask']  # boolean array (N_patches, P, P)
+        print(f"PATCH_INFO['xy_min']: {patch_info['xy_min'].shape}")  
+        print(f"PATCH_INFO['xy_max']: {patch_info['xy_max'].shape}") 
+        print(f"PATCH_INFO['mask']: {patch_info['mask'].shape}") 
+        print(f"patch_div_indices {patch_div_indices.shape}")
 
         return rays_o, rays_d, ray_img, near, far, \
-                target_patches, alpha_patches, patch_masks, patch_div_indices
+                target_patches, alpha_patches, patch_masks, patch_div_indices, patch_info
 
     def __len__(self):
         return self.get_total_frames()
@@ -363,7 +367,7 @@ class Dataset(torch.utils.data.Dataset):
             pass
         elif self.ray_shoot_mode == 'patch':
             rays_o, rays_d, ray_img, near, far, \
-            target_patches, alpha_patches, patch_masks, patch_div_indices = \
+            target_patches, alpha_patches, patch_masks, patch_div_indices, patch_info = \
                 self.sample_patch_rays(img=img, alpha_mask=alpha, H=H, W=W,
                                        subject_mask=alpha[:, :, 0] > 0.,
                                        bbox_mask=ray_mask.reshape(H, W),
@@ -377,7 +381,10 @@ class Dataset(torch.utils.data.Dataset):
             assert False, f"Ivalid Ray Shoot Mode: {self.ray_shoot_mode}"
     
         batch_rays = np.stack([rays_o, rays_d], axis=0) 
-
+        copy_patch_info = {
+            'xy_min': patch_info['xy_min'].copy(),  
+            'xy_max': patch_info['xy_max'].copy()   
+        }
         if 'rays' in self.keyfilter:
             results.update({
                 'img_width': W,
@@ -394,7 +401,8 @@ class Dataset(torch.utils.data.Dataset):
                     'patch_div_indices': patch_div_indices,
                     'patch_masks': patch_masks,
                     'target_patches': target_patches,
-                    'alpha_patches': alpha_patches
+                    'alpha_patches': alpha_patches,
+                    'copy_patch_info': copy_patch_info
                 })
 
         if 'target_rgbs' in self.keyfilter:
