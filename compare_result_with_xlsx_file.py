@@ -1,86 +1,9 @@
-# import os
-# import pandas as pd
-#
-# # Paths to the main directories containing camera folders for both versions
-# base_path_1 = "experiments_with_nan_backup/human_nerf/zju_mocap/p387/adventure/latest/movement_0.2"
-# base_path_2 = "experiments_with_nan_backup/human_nerf_old/zju_mocap/p387/adventure/latest/movement_0.2"
-#
-# # Dictionaries to store the results for each metric
-# psnr_better = {}
-# ssim_better = {}
-# lpips_better = {}
-#
-# # Loop through each camera folder
-# for cam_id in range(1, 23):  # Assuming folders are named cam_1, cam_2, ..., cam_22
-#     file_path_1 = os.path.join(base_path_1, f"cam_{cam_id}", f"cam_{cam_id}_metrics.xlsx")
-#     file_path_2 = os.path.join(base_path_2, f"cam_{cam_id}", f"cam_{cam_id}_metrics.xlsx")
-#
-#     # Check if both files exist
-#     if not os.path.exists(file_path_1) or not os.path.exists(file_path_2):
-#         print(f"File not found: {file_path_1} or {file_path_2}")
-#         continue
-#
-#     # Read the Excel files
-#     df1 = pd.read_excel(file_path_1)
-#     df2 = pd.read_excel(file_path_2)
-#
-#     # Filter rows up to the last image row (541) and ignore the 'Average' row
-#     data_rows_1 = df1.iloc[:541]
-#     data_rows_2 = df2.iloc[:541]
-#
-#     # Check PSNR, SSIM, and LPIPS for each image row
-#     psnr_indices = []
-#     ssim_indices = []
-#     lpips_indices = []
-#
-#     for idx, (row1, row2) in enumerate(zip(data_rows_1.iterrows(), data_rows_2.iterrows())):
-#         image_index = row1[1].iloc[5]  # Get the image index from the 6th column
-#
-#         # Check PSNR
-#         if row1[1]['PSNR'] > row2[1]['PSNR']:
-#             psnr_indices.append(image_index)
-#
-#         # Check SSIM
-#         if row1[1]['SSIM'] > row2[1]['SSIM']:
-#             ssim_indices.append(image_index)
-#
-#         # Check LPIPS (lower is better)
-#         if row1[1]['LPIPS'] < row2[1]['LPIPS']:
-#             lpips_indices.append(image_index)
-#
-#     # Store results if any images in this camera folder exceed the metrics in the second file
-#     if psnr_indices:
-#         psnr_better[f"cam_{cam_id}"] = psnr_indices
-#     if ssim_indices:
-#         ssim_better[f"cam_{cam_id}"] = ssim_indices
-#     if lpips_indices:
-#         lpips_better[f"cam_{cam_id}"] = lpips_indices
-#
-# # Write the results to a text file
-# output_file = "comparison_better_results_per_image.txt"
-# with open(output_file, "w") as f:
-#     # PSNR Results
-#     f.write("PSNR: " + ", ".join([f"{cam} ({len(indices)})" for cam, indices in psnr_better.items()]) + "\n")
-#     for cam, indices in psnr_better.items():
-#         f.write(f"  {cam}: {', '.join(map(str, indices))}\n")
-#
-#     # SSIM Results
-#     f.write("\nSSIM: " + ", ".join([f"{cam} ({len(indices)})" for cam, indices in ssim_better.items()]) + "\n")
-#     for cam, indices in ssim_better.items():
-#         f.write(f"  {cam}: {', '.join(map(str, indices))}\n")
-#
-#     # LPIPS Results
-#     f.write("\nLPIPS: " + ", ".join([f"{cam} ({len(indices)})" for cam, indices in lpips_better.items()]) + "\n")
-#     for cam, indices in lpips_better.items():
-#         f.write(f"  {cam}: {', '.join(map(str, indices))}\n")
-#
-# print(f"Results saved to {output_file}")
 import os
 import pandas as pd
 
 # Paths to the main directories containing camera folders for both versions
-base_path_1 = "experiments_with_nan_backup/human_nerf/zju_mocap/p387/adventure/latest/movement_0.2"
-base_path_2 = "experiments_with_nan_backup/human_nerf_old/zju_mocap/p387/adventure/latest/movement_0.2"
+base_path_1 = "experiments_with_nan_backup_without non_rigid/human_nerf/zju_mocap/p387/adventure/latest/movement_0.5"
+base_path_2 = "experiments_with_nan_backup/human_nerf_old/zju_mocap/p387/adventure/latest/movement_0.5"
 
 # Dictionaries to store the results for each metric
 psnr_better = {}
@@ -153,7 +76,7 @@ for cam_id in range(1, 23):  # Assuming folders are named cam_1, cam_2, ..., cam
         best_metrics[f"cam_{cam_id}_best_lpips"] = (best_lpips_index, best_lpips_diff)
 
 # Write the results to a text file
-output_file = "comparison_better_results_per_image.txt"
+output_file = os.path.join(base_path_1, "comparison_better_results_per_image.txt")
 with open(output_file, "w") as f:
     # PSNR Results
     f.write("PSNR: " + ", ".join([f"{cam} ({len(indices)})" for cam, indices in psnr_better.items()]) + "\n")

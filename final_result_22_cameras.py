@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 # Path to the main directory containing camera folders
-base_path = "experiments_with_nan_backup/human_nerf/zju_mocap/p387/adventure/latest/backup/movement"
+base_path = "experiments_with_nan_backup_without non_rigid/human_nerf/zju_mocap/p387/adventure/latest/movement_0.2"
 
 # List to store the averages of each metric for each camera file
 psnr_averages = []

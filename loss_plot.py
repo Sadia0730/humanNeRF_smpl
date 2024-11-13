@@ -24,18 +24,17 @@ with open(output_file_path, 'w') as output_file:
                 # Save the matched line to the output file
                 output_file.write(line)
                 # Only store the data for every 10,000 iterations
-                if iter_num % 10000 == 0:
+                if iter_num % 5000 == 0:
                     iterations.append(iter_num)
                     losses.append(loss_val)
-                if iter_num == 340000:
-                    break
+
 
 # Plotting the training loss over iterations
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(20, 16))
 plt.plot(iterations, losses, label='Training Loss', color='blue')
 plt.xlabel('Iteration')
 plt.ylabel('Loss')
-plt.title('Training Loss over Iterations (Every 10,000 Iterations)')
+plt.title('Training Loss over Iterations (Every 5,000 Iterations)')
 plt.legend()
 plt.grid(True)
 plt.savefig('/data/humanNeRF_smpl/experiments_with_nan_backup_without non_rigid/human_nerf/zju_mocap/p387/adventure/training_loss_graph.png')  # Save the plot
