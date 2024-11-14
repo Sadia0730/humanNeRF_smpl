@@ -112,7 +112,7 @@ with open(log_file_path, 'r') as file:
                 epoch_losses[epoch]['mse'].append(mse)
                 epoch_losses[epoch]['silhouette'].append(silhouette)
                 epoch_losses[epoch]['ssim'].append(ssim)
-
+print(len(epoch_losses[1]['total_loss']))
 # Calculate averages for each epoch
 epoch_averages = calculate_epoch_averages(epoch_losses)
 
@@ -122,8 +122,8 @@ plt.savefig('experiments_with_scheduler/human_nerf/zju_mocap/p387/adventure/loss
 plt.close()
 
 # Print average losses for each epoch
-print("\nEpoch Averages:")
-for epoch in sorted(epoch_averages.keys()):
-    print(f"\nEpoch {epoch}:")
-    for metric, value in epoch_averages[epoch].items():
-        print(f"{metric}: {value:.4f}")
+# print("\nEpoch Averages:")
+# for epoch in sorted(epoch_averages.keys()):
+#     print(f"\nEpoch {epoch}:")
+#     for metric, value in epoch_averages[epoch].items():
+#         print(f"{metric}: {value:.4f}")
