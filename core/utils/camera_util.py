@@ -192,11 +192,11 @@ def rays_intersect_3d_bbox(bounds, ray_o, ray_d):
     # calculate the step of intersections at six planes of the 3d bounding box
     ray_d[np.abs(ray_d) < 1e-5] = 1e-5
     d_intersect = (nominator / ray_d[:, None]).reshape(-1, 6) # (N_rays, 6)
-    print(f"d_intersect Shape: {d_intersect.shape}")
+    # print(f"d_intersect Shape: {d_intersect.shape}")
     # print(f"d_intersect : {d_intersect}")
     # calculate the six interections
     p_intersect = d_intersect[..., None] * ray_d[:, None] + ray_o[:, None] # (N_rays, 6, 3)
-    print(f"p_intersect Shape: {p_intersect.shape}")
+    # print(f"p_intersect Shape: {p_intersect.shape}")
     # print(f"p_intersect: {p_intersect}")
     # calculate the intersections located at the 3d bounding box
     min_x, min_y, min_z, max_x, max_y, max_z = bounds.ravel()

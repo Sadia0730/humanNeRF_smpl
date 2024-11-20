@@ -293,7 +293,7 @@ class Dataset(torch.utils.data.Dataset):
         for i in range(cfg.patch.N_patches):
             x_min, y_min = patch_info['xy_min'][i] 
             x_max, y_max = patch_info['xy_max'][i]
-            print(f"img.shape in patch: {img.shape}")
+            # print(f"img.shape in patch: {img.shape}")
             targets.append(img[y_min:y_max, x_min:x_max])
             alpha_patches.append(alpha_mask[y_min:y_max, x_min:x_max])
 
@@ -380,11 +380,7 @@ class Dataset(torch.utils.data.Dataset):
         else:
             assert False, f"Ivalid Ray Shoot Mode: {self.ray_shoot_mode}"
     
-        batch_rays = np.stack([rays_o, rays_d], axis=0) 
-        copy_patch_info = {
-            'xy_min': patch_info['xy_min'].copy(),  
-            'xy_max': patch_info['xy_max'].copy()   
-        }
+        batch_rays = np.stack([rays_o, rays_d], axis=0)
         if 'rays' in self.keyfilter:
             results.update({
                 'img_width': W,
@@ -402,7 +398,8 @@ class Dataset(torch.utils.data.Dataset):
                     'patch_masks': patch_masks,
                     'target_patches': target_patches,
                     'alpha_patches': alpha_patches,
-                    'copy_patch_info': copy_patch_info
+                    'patch_info_xy_min': patch_info['xy_min'],
+                    'patch_info_xy_max': patch_info['xy_max']
                 })
 
         if 'target_rgbs' in self.keyfilter:

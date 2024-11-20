@@ -9,12 +9,12 @@ class DensityMLP(nn.Module):
 
         # First layer
         layers.append(nn.Linear(input_ch, mlp_width))
-        layers.append(nn.LeakyReLU(negative_slope=0.01))
+        layers.append(nn.ReLU())
 
         # Middle layers
         for _ in range(mlp_depth - 1):
             layers.append(nn.Linear(mlp_width, mlp_width))
-            layers.append(nn.LeakyReLU(negative_slope=0.01))
+            layers.append(nn.ReLU())
 
         # Output layer for density (sigma)
         layers.append(nn.Linear(mlp_width, 1))

@@ -14,12 +14,12 @@ def calculate_metrics(true_img, pred_img):
     # Assuming images are in range [0, 255]
     pred_img = (pred_img / 255.0).astype('float32')
     true_img = (true_img / 255.0).astype('float32')
-    print("True image shape:", true_img.shape)
-    print("Predicted image shape:", pred_img.shape)
-    print("True image min/max:", true_img.min(), true_img.max())
-    print("Predicted image min/max:", pred_img.min(), pred_img.max())
-    print("True image data type:", true_img.dtype)
-    print("Predicted image data type:", pred_img.dtype)
+    # print("True image shape:", true_img.shape)
+    # print("Predicted image shape:", pred_img.shape)
+    # print("True image min/max:", true_img.min(), true_img.max())
+    # print("Predicted image min/max:", pred_img.min(), pred_img.max())
+    # print("True image data type:", true_img.dtype)
+    # print("Predicted image data type:", pred_img.dtype)
 
     # Convert images to tensor and add batch dimension
     true_tensor = torch.from_numpy(true_img.transpose(2, 0, 1)).unsqueeze(0).cuda()

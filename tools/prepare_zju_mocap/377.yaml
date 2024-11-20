@@ -1,11 +1,11 @@
 dataset:
-  zju_mocap_path: /data/dataset/zju_mocap
+  zju_mocap_path: ../../../../home/sadia/Downloads/
   subject: '377'
   sex: 'neutral'
 
-training_view: 0
+training_view: 22
 max_frames: 570
 
 output:
-  dir: ../../dataset/zju_mocap
-  name: '377'
+  dir: ../../dataset/zju_mocap/{subject}/zju_test/
+  name: cam_{training_view}

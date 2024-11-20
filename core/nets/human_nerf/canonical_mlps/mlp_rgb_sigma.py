@@ -17,16 +17,16 @@ class CanonicalMLP(nn.Module):
         self.mlp_width = mlp_width
         self.input_ch = input_ch
         
-        pts_block_mlps = [nn.Linear(input_ch, mlp_width), nn.LeakyReLU(negative_slope=0.01)]
+        pts_block_mlps = [nn.Linear(input_ch, mlp_width),  nn.ReLU()]
 
         layers_to_cat_input = []
         for i in range(mlp_depth-1):
             if i in skips:
                 layers_to_cat_input.append(len(pts_block_mlps))
-                pts_block_mlps += [nn.Linear(mlp_width + input_ch, mlp_width), 
-                                   nn.LeakyReLU(negative_slope=0.01)]
+                pts_block_mlps += [nn.Linear(mlp_width + input_ch, mlp_width),
+                                   nn.ReLU()]
             else:
-                pts_block_mlps += [nn.Linear(mlp_width, mlp_width), nn.LeakyReLU(negative_slope=0.01)]
+                pts_block_mlps += [nn.Linear(mlp_width, mlp_width), nn.ReLU()]
         self.layers_to_cat_input = layers_to_cat_input
 
         self.pts_linears = nn.ModuleList(pts_block_mlps)

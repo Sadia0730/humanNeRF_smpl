@@ -7,5 +7,5 @@ training_view: 23
 max_frames: 540
 
 output:
-  dir: ../../dataset/zju_mocap/{subject}/zju-test/
+  dir: ../../dataset/zju_mocap/{subject}/zju_test/
   name: 'cam_{training_view}'
