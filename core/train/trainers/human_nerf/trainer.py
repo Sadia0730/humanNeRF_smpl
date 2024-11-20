@@ -1,5 +1,5 @@
 import os
-
+import cv2
 import torch
 import torch.nn as nn
 import numpy as np
@@ -25,7 +25,143 @@ to8b = lambda x : (255.*np.clip(x,0.,1.)).astype(np.uint8)
 
 EXCLUDE_KEYS_TO_GPU = ['frame_name', 'img_width', 'img_height']
 
+# def reconstruct_image_from_patches(patch_rgb_image, patch_info_xy_min, patch_info_xy_max, patch_masks, H, W):
+#     # Initialize the reconstructed image and a weight mask
+#     C = patch_rgb_image.shape[-1]  # Number of color channels
+#     print(f"C: {C}")
+#     print(f"patch_info_xy_min shape: {patch_info_xy_min.shape}")
+#     print(f"patch_info_xy_max shape: {patch_info_xy_max.shape}")
+#     print(f"patch_masks: {patch_masks.shape}")
+#     print(f"patch_info_xy_min checking: {patch_info_xy_min} patch_info_xy_max checking: {patch_info_xy_max}")
 
+#     # Initialize the reconstructed image and a weight mask
+#     reconstructed_image = np.zeros((H, W, C))  # For RGB images, C=3.
+#     coverage_map = np.zeros((H, W))  # Tracks how many patches contribute to each pixel.
+
+#     # Loop through each patch and its corresponding info
+#     print(f"patch_rgb_image type: {type(patch_rgb_image)}")
+#     print(f"patch_rgb_image shape: {patch_rgb_image.shape if hasattr(patch_rgb_image, 'shape') else 'Unknown'}")
+
+#     for patch, xy_min, xy_max in zip(patch_rgb_image, patch_info_xy_min, patch_info_xy_max):
+#         # Convert PyTorch tensors to NumPy integers
+#         x_min, y_min = xy_min.cpu().numpy().astype(int)
+#         x_max, y_max = xy_max.cpu().numpy().astype(int)
+        
+#         # Clip indices to ensure they are within bounds
+#         x_min = max(0, x_min)
+#         x_max = min(W, x_max)
+#         y_min = max(0, y_min)
+#         y_max = min(H, y_max)
+#         # Convert patch to NumPy
+#         patch_np = patch.detach().cpu().numpy()
+#         # Check for size consistency
+#         assert patch.shape == (y_max - y_min, x_max - x_min, C), \
+#             f"Patch size {patch.shape} does not match bounding box size {(y_max - y_min, x_max - x_min, C)}"
+
+#         # Update the reconstructed image and coverage map
+#         reconstructed_image[y_min:y_max, x_min:x_max] += patch_np
+#         coverage_map[y_min:y_max, x_min:x_max] += 1  # Update coverage map
+
+
+#         # Debugging information
+#         # print(f"Patch : xy_min=({x_min}, {y_min}), xy_max=({x_max}, {y_max})")
+#         # print(f"Patch shape: {patches[i].shape}, Mask sum: {np.sum(patch_info['mask'][i])}")
+
+#             # Print min and max values before normalization
+#     print(f"Before Normalization: Min = {reconstructed_image.min()}, Max = {reconstructed_image.max()}")
+
+#     # Save the reconstructed image before normalization
+#     reconstructed_image_uint8 = (np.clip(reconstructed_image, 0, 1) * 255).astype(np.uint8)
+#     cv2.imwrite("reconstructed_image_before_normalization.png", cv2.cvtColor(reconstructed_image_uint8, cv2.COLOR_RGB2BGR))
+
+#     print(f"After Normalization: Min = {reconstructed_image.min()}, Max = {reconstructed_image.max()}")
+
+#    # Save the reconstructed image after normalization
+#     reconstructed_image_uint8 = (np.clip(reconstructed_image, 0, 1) * 255).astype(np.uint8)
+#     cv2.imwrite("reconstructed_image_after_normalization.png", cv2.cvtColor(reconstructed_image_uint8, cv2.COLOR_RGB2BGR))
+
+#     return reconstructed_image
+def reconstruct_image_from_patches(patch_rgb_image, patch_info_xy_min, patch_info_xy_max, patch_masks, H, W):
+    C = patch_rgb_image.shape[-1]
+    reconstructed_image = np.zeros((H, W, C))
+    coverage_map = np.zeros((H, W))
+    
+    # Debug total number of patches and masks
+    n_patches = len(patch_rgb_image)
+    print(f"Total number of patches: {n_patches}")
+    print(f"Patch masks shape: {patch_masks.shape if patch_masks is not None else 'No masks'}")
+    
+    # Create debug visualization
+    debug_viz = np.zeros((H, W, 3), dtype=np.uint8)
+    
+    for i, (patch, xy_min, xy_max) in enumerate(zip(patch_rgb_image, patch_info_xy_min, patch_info_xy_max)):
+        # Convert coordinates
+        x_min, y_min = xy_min.cpu().numpy().astype(int)
+        x_max, y_max = xy_max.cpu().numpy().astype(int)
+        
+        # Get mask for this patch if available
+        mask = None
+        if patch_masks is not None:
+            mask = patch_masks[i].cpu().numpy().astype(bool)
+        
+        # Clip boundaries
+        x_min, x_max = max(0, x_min), min(W, x_max)
+        y_min, y_max = max(0, y_min), min(H, y_max)
+        
+        # Skip invalid patches
+        if x_min >= x_max or y_min >= y_max:
+            print(f"Skipping invalid patch {i}: coords ({x_min},{y_min}) to ({x_max},{y_max})")
+            continue
+        
+        patch_np = patch.detach().cpu().numpy()
+        
+        # Apply mask if available
+        if mask is not None:
+            # Ensure mask and patch have compatible shapes
+            mask = mask[:y_max-y_min, :x_max-x_min]
+            patch_np = patch_np * mask[..., None]  # Broadcast mask to all channels
+        
+        try:
+            # Update reconstruction with masked patch
+            patch_region = reconstructed_image[y_min:y_max, x_min:x_max]
+            patch_coverage = coverage_map[y_min:y_max, x_min:x_max]
+            
+            valid_mask = np.ones_like(patch_np[..., 0], dtype=bool)
+            if mask is not None:
+                valid_mask = mask
+            
+            # Only update pixels where the patch has valid data
+            patch_region[valid_mask] += patch_np[valid_mask]
+            patch_coverage[valid_mask] += 1
+            
+            # Add to debug visualization
+            color = np.array([hash(str(i)) % 256, hash(str(i+1)) % 256, hash(str(i+2)) % 256])
+            debug_viz[y_min:y_max, x_min:x_max][valid_mask] = color
+            
+        except ValueError as e:
+            print(f"Error processing patch {i}: {str(e)}")
+            print(f"Patch shape: {patch_np.shape}")
+            print(f"Region shape: {(y_max-y_min, x_max-x_min, C)}")
+    
+    # Save debug visualization
+    cv2.imwrite("patch_placement_debug.png", debug_viz)
+    
+    # Print coverage analysis
+    covered_pixels = np.count_nonzero(coverage_map)
+    total_pixels = H * W
+    print(f"\nCoverage Analysis:")
+    print(f"Covered pixels: {covered_pixels}/{total_pixels} ({covered_pixels/total_pixels*100:.2f}%)")
+    print(f"Max overlap: {int(coverage_map.max())} patches")
+    
+    # Normalize with careful handling of divisions
+    mask = coverage_map > 0
+    reconstructed_image[mask] /= coverage_map[mask, None]
+    
+    # Clip and convert to uint8
+    reconstructed_image_uint8 = (np.clip(reconstructed_image, 0, 1) * 255).astype(np.uint8)
+    cv2.imwrite(f"reconstructed_final_{100}.png", cv2.cvtColor(reconstructed_image_uint8, cv2.COLOR_RGB2BGR))
+    
+    return reconstructed_image
 
 def _unpack_imgs(rgbs, patch_masks, bgcolor, targets, div_indices):
     print(f"rgbs shape: {rgbs.shape}")
@@ -108,7 +244,7 @@ class Trainer(object):
 
         return segmentation_loss
 
-    def get_img_rebuild_loss(self, loss_names, rgb, target):
+    def get_img_rebuild_loss(self, loss_names, rgb, target, alpha_patches,H,W):
         losses = {}
 
         if "mse" in loss_names:
@@ -121,20 +257,25 @@ class Trainer(object):
             lpips_loss = self.lpips(scale_for_lpips(rgb.permute(0, 3, 1, 2)), 
                                     scale_for_lpips(target.permute(0, 3, 1, 2)))
             losses["lpips"] = torch.mean(lpips_loss)
-        # Add SSIM loss calculation
-        if "ssim" in loss_names:
-            print(f"RGB Min: {rgb.min()}, Max: {rgb.max()}")
-            print(f"Target Min: {target.min()}, Max: {target.max()}")
-            print(rgb.shape)
-            print(target.shape)
-            ssim_loss_fn = SSIMLoss(data_range=1.0)  # Assuming normalized data in [0, 1]
-            ssim_loss = ssim_loss_fn(torch.clamp(rgb,0,1).permute(0, 3, 1, 2), torch.clamp(target,0,1).permute(0, 3, 1, 2))
-            losses["ssim"] = 1 - ssim_loss
+
+        if "silhouette" in loss_names:
+            silhouette_loss = self.calculate_segmentation_loss(rgb, alpha_patches, H, W)
+            losses["silhouette"] = silhouette_loss
+            print(f"iter in constr: {self.iter}")
+        # # Add SSIM loss calculation
+        # if "ssim" in loss_names:
+        #     print(f"RGB Min: {rgb.min()}, Max: {rgb.max()}")
+        #     print(f"Target Min: {target.min()}, Max: {target.max()}")
+        #     print(rgb.shape)
+        #     print(target.shape)
+        #     ssim_loss_fn = SSIMLoss(data_range=1.0)  # Assuming normalized data in [0, 1]
+        #     ssim_loss = ssim_loss_fn(torch.clamp(rgb,0,1).permute(0, 3, 1, 2), torch.clamp(target,0,1).permute(0, 3, 1, 2))
+        #     losses["ssim"] = 1 - ssim_loss
 
         return losses
 
     def get_loss(self, net_output, 
-                 patch_masks, bgcolor, targets, div_indices,alpha, alpha_patches, ray_mask):
+                 patch_masks, bgcolor, targets, div_indices,alpha, alpha_patches, ray_mask,  patch_info_xy_min, patch_info_xy_max):
         H, W = alpha.shape[:2]
         lossweights = cfg.train.lossweights
         loss_names = list(lossweights.keys())
@@ -149,19 +290,15 @@ class Trainer(object):
         print(f"ray_mask Shape: {ray_mask.shape}")
         print(f"targets Shape: {targets.shape}")
         print(f"alpha_patches Shape: {alpha_patches.shape}")
-        # print(f"reconstructed_rgb Shape in train: {reconstructed_rgb.shape}")
+     
 
 
         losses = self.get_img_rebuild_loss(
                         loss_names, 
                         _unpack_imgs(rgb, patch_masks, bgcolor,
                                      targets, div_indices), 
-                        targets)
+                        targets, alpha_patches,H,W)
 
-
-        silhouette_loss = self.calculate_segmentation_loss(patch_rgb_image, alpha_patches, H, W)
-        losses["silhouette"] = silhouette_loss * cfg.train.lossweights["silhouette"]
-        print(f"silhouette: {silhouette_loss}")
         train_losses = [
             weight * losses[k] for k, weight in lossweights.items()
         ]
@@ -207,7 +344,9 @@ class Trainer(object):
                     div_indices=data['patch_div_indices'],
                     alpha=data['alpha'],
                     alpha_patches=data['alpha_patches'],
-                    ray_mask=ray_mask
+                    ray_mask=ray_mask,
+                    patch_info_xy_min=data['patch_info_xy_min'],
+                    patch_info_xy_max=data['patch_info_xy_max']
                     )
                 for loss_name, loss_val in loss_dict.items():
                     if check_for_nans(f"{loss_name} loss", loss_val):

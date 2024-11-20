@@ -88,15 +88,14 @@ train:
   optimizer: 'adam'
   patience: 15
   min_lr: 0.00001
-  log_interval: 20
+  log_interval: 1
   save_checkpt_interval: 2000
   save_model_interval: 50000
   ray_shoot_mode: 'patch'
   lossweights:
     lpips: 1.0
     mse: 0.1
-    silhouette: 0.8
-    ssim: 0.5
+    silhouette: 0.5
 
 progress:
   batch_size: 1

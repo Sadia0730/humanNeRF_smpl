@@ -300,10 +300,10 @@ class Dataset(torch.utils.data.Dataset):
         target_patches = np.stack(targets, axis=0) # (N_patches, P, P, 3)
         alpha_patches = np.stack(alpha_patches, axis=0)  # (N_patches, P, P)
         patch_masks = patch_info['mask']  # boolean array (N_patches, P, P)
-        print(f"PATCH_INFO['xy_min']: {patch_info['xy_min'].shape}")  
-        print(f"PATCH_INFO['xy_max']: {patch_info['xy_max'].shape}") 
-        print(f"PATCH_INFO['mask']: {patch_info['mask'].shape}") 
-        print(f"patch_div_indices {patch_div_indices.shape}")
+        # print(f"PATCH_INFO['xy_min']: {patch_info['xy_min'].shape}")  
+        # print(f"PATCH_INFO['xy_max']: {patch_info['xy_max'].shape}") 
+        # print(f"PATCH_INFO['mask']: {patch_info['mask'].shape}") 
+        # print(f"patch_div_indices {patch_div_indices.shape}")
 
         return rays_o, rays_d, ray_img, near, far, \
                 target_patches, alpha_patches, patch_masks, patch_div_indices, patch_info
@@ -380,7 +380,7 @@ class Dataset(torch.utils.data.Dataset):
         else:
             assert False, f"Ivalid Ray Shoot Mode: {self.ray_shoot_mode}"
     
-        batch_rays = np.stack([rays_o, rays_d], axis=0)
+        batch_rays = np.stack([rays_o, rays_d], axis=0) 
         if 'rays' in self.keyfilter:
             results.update({
                 'img_width': W,

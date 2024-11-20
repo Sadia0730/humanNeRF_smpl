@@ -159,6 +159,7 @@ class Network_Triplane(nn.Module):
         print(f"nearest_vertex_idx {nearest_vertex_idx.shape}")
         # Fetch the TriPlane features of the nearest vertices
         nearest_tri_feats = tri_feats[nearest_vertex_idx]  # [N_rays * N_samples, feature_dim]
+        print(f"Shape of v: {nearest_tri_feats.shape}") 
         if check_for_nans("nearest_tri_feats", nearest_tri_feats):
             print("NaN detected in nearest_tri_feats")
         print(f"nearest_tri_feats {nearest_tri_feats.shape}")
