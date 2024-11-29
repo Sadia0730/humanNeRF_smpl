@@ -67,8 +67,8 @@ def plot_losses(epoch_averages):
 
 # Main execution
 # Define the file paths
-log_file_path = 'experiments_w/p_ssim_patch_seg/human_nerf/zju_mocap/p387/adventure/logs.txt'
-output_file_path = 'experiments_w/p_ssim_patch_seg/human_nerf/zju_mocap/p387/adventure/loss_track.txt'
+log_file_path = 'experiments_315_FINAL/human_nerf/zju_mocap/p315/adventure/logs.txt'
+output_file_path = 'experiments_315_FINAL/human_nerf/zju_mocap/p315/adventure/loss_track.txt'
 
 # Dictionary to store losses for each epoch
 epoch_losses = {}
@@ -125,7 +125,7 @@ epoch_averages = calculate_epoch_averages(epoch_losses)
 
 # Create and save the plots
 fig = plot_losses(epoch_averages)
-plt.savefig('experiments_w/p_ssim_patch_seg/human_nerf/zju_mocap/p387/adventure/loss_analysis_per_epoch.png', dpi=300,
+plt.savefig('experiments_315_FINAL/human_nerf/zju_mocap/p315/adventure/loss_analysis_per_epoch.png', dpi=300,
             bbox_inches='tight')
 plt.close()
 
