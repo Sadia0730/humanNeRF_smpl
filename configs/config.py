@@ -30,7 +30,7 @@ def get_cfg_defaults():
 
 
 def parse_cfg(cfg):
-    cfg.logdir = os.path.join('experiments', cfg.category, cfg.task, cfg.subject, cfg.experiment)
+    cfg.logdir = os.path.join('experiments_393_main', cfg.category, cfg.task, cfg.subject, cfg.experiment)
 
 
 def determine_primary_secondary_gpus(cfg):

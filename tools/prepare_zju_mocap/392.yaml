@@ -1,11 +1,9 @@
 dataset:
-  zju_mocap_path: /data/dataset/zju_mocap
+  sex: neutral
   subject: '392'
-  sex: 'neutral'
-
-training_view: 0
+  zju_mocap_path: ../../data/
 max_frames: -1
-
 output:
-  dir: ../../dataset/zju_mocap
-  name: '392'
+  dir: ../../dataset/zju_mocap/392/zju_test
+  name: cam_22
+training_view: 22

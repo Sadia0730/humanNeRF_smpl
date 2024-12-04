@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-CONFIG_PATH="./configs/human_nerf/zju_mocap/387/adventure.yaml"
+CONFIG_PATH="./configs/human_nerf/zju_mocap/393/adventure.yaml"
 START_CAM=1
 END_CAM=22
 
@@ -10,7 +10,7 @@ echo "Starting camera rendering for cameras $START_CAM to $END_CAM"
 for cam_id in $(seq $START_CAM $END_CAM)
 do
     echo "Processing camera $cam_id..."
-    python run.py --type movement \
+    python3 run.py --type movement \
                  --cfg $CONFIG_PATH \
                  --cam_id $cam_id \
                  load_net latest
