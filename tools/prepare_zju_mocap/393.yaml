@@ -3,9 +3,9 @@ dataset:
   subject: '393'
   sex: 'neutral'
 
-training_view: 0
+training_view: 22
 max_frames: -1
 
 output:
-  dir: ../../../../home/sadia/Downloads/
-  name: '393'
+  dir: ../../dataset/zju_mocap/393/zju_test/
+  name: cam_{training_view}

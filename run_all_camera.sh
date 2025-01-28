@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Configuration
-CONFIG_PATH="./configs/human_nerf/zju_mocap/315/adventure.yaml"
+CONFIG_PATH="./configs/human_nerf/zju_mocap/393/adventure.yaml"
 START_CAM=1
-END_CAM=22
+END_CAM=21
 
 echo "Starting camera rendering for cameras $START_CAM to $END_CAM"
 

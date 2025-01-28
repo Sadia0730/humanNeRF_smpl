@@ -3,7 +3,7 @@ dataset:
   subject: '387'
   sex: 'neutral'
 
-training_view: 23
+training_view: 22
 max_frames: 540
 
 output:
