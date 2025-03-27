@@ -79,7 +79,7 @@ train:
   batch_size: 1
   shuffle: True
   drop_last: False
-  maxiter: 400000
+  maxiter: 100000
   lr: 0.0005  # 5e-4
   lr_mweight_vol_decoder: 0.00005 # 5e-5
   lr_pose_decoder: 0.00005        # 5e-5

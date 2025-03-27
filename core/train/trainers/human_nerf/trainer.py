@@ -18,6 +18,9 @@ import matplotlib.patches as patches
 from configs import cfg
 from piq import SSIMLoss
 from core.utils.metric import calculate_metrics
+from core.utils.grad_cam import GradCAM
+from core.utils.explainability_util import log_blending_weight
+
 
 img2mse = lambda x, y : torch.mean((x - y) ** 2)
 img2l1 = lambda x, y : torch.mean(torch.abs(x-y))
@@ -357,6 +360,10 @@ class Trainer(object):
 
 
                 train_loss.backward()
+                if hasattr(self.network, 'blending_weight'):
+                    grad = self.network.blending_weight.grad
+                    print(f"💡 Blending Weight Grad at iter {self.iter}: {grad}")
+
                 for name, param in self.network.named_parameters():
                     if param.grad is not None and check_for_nans(f"{name} grad", param.grad):
                         print(f"NaN detected in gradient of {name}")
@@ -395,7 +402,37 @@ class Trainer(object):
                         self.save_ckpt(f'iter_{self.iter}')
 
                 # self.update_lr(self.optimizer, self.iter)
+
+
                 print(f"Iter: {self.iter}r")
+                if self.iter % 100 == 0:
+                    log_blending_weight(self.network.blending_weight, self.iter)
+
+                # if self.iter % 200 == 0:
+                #     from types import MethodType
+                #
+                #     # Wrap the model forward to bind required args
+                #     def partial_forward(self, input_tensor):
+                #         return self.forward(
+                #             rays_dict=input_tensor,
+                #             dst_Rs=data['dst_Rs'],
+                #             dst_Ts=data['dst_Ts'],
+                #             cnl_gtfms=data['cnl_gtfms'],
+                #             motion_weights_priors=data['motion_weights_priors']
+                #         )
+                #
+                #     # Temporarily override forward method for GradCAM
+                #     self.network.forward = MethodType(partial_forward, self.network)
+                #
+                #     # Now use only `data['rays_dict']` or `target_patches` if that's the ray input
+                #     grad_cam = GradCAM(model=self.network, target_layer=self.network.cnl_mlp.module)
+                #     cam_output = grad_cam.generate_cam(
+                #         input_tensor=data['rays_dict'])  # or input_tensor=data['target_patches']
+                #
+                #     plt.imshow(cam_output, cmap='jet')
+                #     plt.title(f"Grad-CAM Iter {self.iter}")
+                #     plt.savefig(f"gradcam_iter_{self.iter}.png")
+                #     plt.close()
                 self.iter += 1
                 
         epoch_loss = float(epoch_loss / len(train_dataloader))  # Convert to scalar Python float
@@ -462,7 +499,14 @@ class Trainer(object):
             # print(f"After Truth: {truth.shape}")
             # print(f"Rendered: {rendered.shape}")
             images.append(np.concatenate([truth, rendered], axis=1))
-
+            visualize_counterfactual_pose_effect(
+                self.network,
+                data,
+                joint_idx=17,  # e.g., right shoulder
+                axis=0,  # x-axis rotation
+                delta=0.3,  # small rotation
+                save_path=os.path.join(cfg.logdir, "counterfactuals")
+            )
             # check if we create empty images (only at the begining of training)
             if self.iter <= 5000 and \
                 np.allclose(rendered, np.array(cfg.bgcolor), atol=5.):

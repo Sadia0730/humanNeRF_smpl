@@ -11,7 +11,7 @@ from core.utils.train_util import cpu_data_to_gpu
 from core.utils.image_util import ImageWriter, to_8b_image, to_8b3ch_image
 from core.utils.metric import calculate_metrics
 from configs import cfg, args
-
+from core.utils.explainability_util import visualize_counterfactual_pose_effect
 EXCLUDE_KEYS_TO_GPU = ['frame_name',
                        'img_width', 'img_height', 'ray_mask']
 
@@ -92,7 +92,17 @@ def _freeview(
             metrics = calculate_metrics(to_8b_image(target_rgbs.numpy()), rgb_img)
             metrics['Image Index'] = idx
             metrics_data.append(metrics)
-
+        visualize_counterfactual_pose_effect(
+            model,
+            data,
+            joint_idx=19,
+            axis=0,
+            delta=-1.7,
+            width=width,
+            height=height,
+            ray_mask=ray_mask,
+            save_path=os.path.join(cfg.logdir, "counterfactuals_FV")
+        )
         imgs = [rgb_img]
         if cfg.show_truth and target_rgbs is not None:
             target_rgbs = to_8b_image(target_rgbs.numpy())
@@ -161,6 +171,18 @@ def run_movement(render_folder_name='movement'):
                 rgb.data.cpu().numpy(),
                 alpha.data.cpu().numpy(),
                 batch['target_rgbs'])
+        visualize_counterfactual_pose_effect(
+            model,  # ✅ use the correct model
+            data,
+            joint_idx=19,  # e.g., right shoulder
+            axis=0,  # x-axis rotation
+            delta=-1.7,  # small rotation
+            width=width,
+            height=height,
+            ray_mask=ray_mask,
+            save_path=os.path.join(cfg.logdir, "counterfactuals")
+        )
+
         if batch['target_rgbs'] is not None:
             # Calculate metrics
             metrics = calculate_metrics(truth_img, rgb_img)

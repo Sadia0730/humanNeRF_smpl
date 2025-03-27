@@ -192,7 +192,7 @@ class Network_Triplane(nn.Module):
         blend_weight = torch.sigmoid(self.blending_weight)
 
         print(f"In Blend Density Function blend_weight: {type(blend_weight)} {blend_weight}")
-        blend_weight = blend_weight.clone().detach()
+        # blend_weight = blend_weight.clone().detach()
         if check_for_nans("blend_weight", blend_weight ):
             print("NaN detected in blend_weight")
         blend_density = (blend_weight * nerf_density) + ((1 - blend_weight) * triplane_density)
@@ -463,6 +463,7 @@ class Network_Triplane(nn.Module):
             print("NaN detected in blended_density")
         # Replace NeRF density with blended density in the raw output
         # rawcopy=raw.clone
+        raw = raw.clone()
         raw[..., 3] = blended_density
         print(f"blended_density")
         rgb_map, acc_map, _, depth_map = \

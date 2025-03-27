@@ -35,7 +35,11 @@ class Embedder:
             w = (1. - torch.cos(np.pi * torch.clamp(alpha - freq_idx, 
                                                    min=0., max=1.))) / 2.
             for p_fn in self.kwargs['periodic_fns']:
-                embed_fns.append(lambda x, p_fn=p_fn, freq=freq, w=w: w * p_fn(x * freq))
+                # embed_fns.append(lambda x, p_fn=p_fn, freq=freq, w=w: w * p_fn(x * freq))
+                embed_fns.append(
+                    lambda x, p_fn=p_fn, freq=freq, w=w: w.to(x.device) * p_fn(x * freq.to(x.device))
+                )
+
                 out_dim += d
                     
         self.embed_fns = embed_fns
